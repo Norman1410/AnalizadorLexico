@@ -1,0 +1,15 @@
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Compilación
+out/
+
+# Archivos temporales de JFlex
+*.java~
+
+# Archivos compilados
+*.class
+
+# Sistema operativo
+.DS_Store

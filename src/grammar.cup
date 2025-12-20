@@ -1,0 +1,15 @@
+import java_cup.runtime.*;
+
+/* ====== Declaraciones ====== */
+terminal WORLD, LOCAL, ENDL;
+terminal PLUS, MINUS, TIMES, MOD, POW;
+terminal IDENT;
+terminal ERROR;
+
+non terminal program;
+
+start with program;
+
+%%
+
+program ::= WORLD ;
