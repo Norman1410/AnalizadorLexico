@@ -10,8 +10,8 @@ import java_cup.runtime.Symbol;
 public class Main {
 
     public static void main(String[] args) {
-        // El programa se ejecuta con: java Main <ruta_archivo>
-        // Si no me pasan la ruta, no puedo leer nada.
+        // Se ejecuta así:
+        // java Main <ruta_archivo>
         if (args.length == 0) {
             System.out.println("Uso: java Main <ruta_del_archivo>");
             return;
@@ -23,7 +23,7 @@ public class Main {
         try (Reader reader = new BufferedReader(new FileReader(rutaEntrada));
              PrintWriter out = new PrintWriter(new FileWriter(rutaSalida))) {
 
-            // Scanner generado por JFlex (renombrado para no chocar con java.util.Scanner).
+            // Scanner generado por JFlex
             LexicoScanner lexer = new LexicoScanner(reader);
 
             while (true) {
@@ -32,13 +32,19 @@ public class Main {
                 int idToken = s.sym;
                 String nombreToken = nombreDeToken(idToken);
 
-                // El lexema normalmente lo guardamos en s.value.
-                // Si viene null (por ejemplo en EOF), lo dejamos vacío.
+                // El lexema viene en s.value cuando el scanner lo manda.
                 String lexema = (s.value == null) ? "" : String.valueOf(s.value);
 
-                // En nuestro .flex usamos left/right como línea/columna.
-                out.printf("TOKEN=%s  LEXEMA=%s  (linea=%d,col=%d)%n",
-                        nombreToken, lexema, s.left, s.right);
+                // Reporte normal de token
+                out.printf("ID=%d  TOKEN=%s  LEXEMA=%s  (linea=%d,col=%d)%n",
+                        idToken, nombreToken, lexema, s.left, s.right);
+
+                // Si el token es ERROR, lo marco también por consola para enterarme rápido.
+                // (El programa no se detiene, solo lo reporta.)
+                if (idToken == sym.ERROR) {
+                    System.err.printf("Advertencia léxica en linea %d, col %d -> %s%n",
+                            s.left, s.right, lexema);
+                }
 
                 if (idToken == sym.EOF) {
                     break;
@@ -53,8 +59,8 @@ public class Main {
         }
     }
 
-    // Convierte el id numérico del token a su nombre (por ejemplo: 3 -> WORLD).
-    // Así no tengo que escribir un switch gigante a mano.
+    // Convierte el id numérico del token a su nombre (ej: 3 -> WORLD).
+    // Así no tengo que mantener un switch enorme a mano.
     private static String nombreDeToken(int id) {
         try {
             Field[] campos = sym.class.getFields();
@@ -67,7 +73,7 @@ public class Main {
                 }
             }
         } catch (Exception e) {
-            // Si falla, no pasa nada: devolvemos el id.
+            // Si falla, devuelvo el id como texto y ya.
         }
         return String.valueOf(id);
     }

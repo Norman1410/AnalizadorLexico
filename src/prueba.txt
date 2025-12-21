@@ -1,1 +1,30 @@
-world local x = 5 endl
+world
+x // 2 endl
+x / 2.0 endl
+x++ endl
+y-- endl
+x <= 10 endl
+x != 3 endl
+true @ false endl
+Σ true endl
+¿ x <= 10 ? endl
+¡ x++ endl !
+x -> y endl
+decide of else end endl
+loop exit when for endl
+return break endl
+show get endl
+gift navidad coal endl
+| esto es un comentario de una línea y no debería aparecer
+world endl
+
+є
+esto es comentario multilínea
+puede tener símbolos como @ Σ ¿ ¡ y números 123 4.5
+э
+
+x + 1 endl
+'a' endl
+'\n' endl
+"hola mundo" endl
+"con comillas: \" ok" endl

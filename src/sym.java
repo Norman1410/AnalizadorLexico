@@ -6,18 +6,56 @@
 /** CUP generated class containing symbol constants. */
 public class sym {
   /* terminals */
+  public static final int FLOAT_LIT = 45;
+  public static final int CHAR_LIT = 47;
+  public static final int WHEN = 29;
+  public static final int POW = 11;
+  public static final int SHOW = 33;
+  public static final int GE = 17;
+  public static final int FOR = 30;
   public static final int MINUS = 6;
-  public static final int IDENT = 10;
-  public static final int POW = 9;
-  public static final int WORLD = 2;
-  public static final int MOD = 8;
-  public static final int ERROR = 11;
-  public static final int LOCAL = 3;
-  public static final int EOF = 0;
-  public static final int PLUS = 5;
-  public static final int error = 1;
-  public static final int TIMES = 7;
   public static final int ENDL = 4;
+  public static final int NOT = 22;
+  public static final int AND = 20;
+  public static final int LT = 14;
+  public static final int RPAR = 39;
+  public static final int DECIDE = 23;
+  public static final int COAL = 37;
+  public static final int OR = 21;
+  public static final int IDIV = 9;
+  public static final int NAVIDAD = 36;
+  public static final int GET = 34;
+  public static final int INC = 12;
+  public static final int DIV = 8;
+  public static final int LOOP = 27;
+  public static final int PLUS = 5;
+  public static final int EXIT = 28;
+  public static final int LE = 15;
+  public static final int OF = 24;
+  public static final int EOF = 0;
+  public static final int RETURN = 31;
+  public static final int error = 1;
+  public static final int MOD = 10;
+  public static final int IDENT = 43;
+  public static final int BREAK = 32;
+  public static final int WORLD = 2;
+  public static final int EQ = 18;
+  public static final int ERROR = 49;
+  public static final int TIMES = 7;
+  public static final int ARROW = 42;
+  public static final int LBRACE = 40;
+  public static final int ELSE = 25;
+  public static final int RBRACE = 41;
+  public static final int NE = 19;
+  public static final int BOOL_LIT = 46;
+  public static final int END = 26;
+  public static final int LPAR = 38;
+  public static final int LOCAL = 3;
+  public static final int DEC = 13;
+  public static final int STRING_LIT = 48;
+  public static final int INT_LIT = 44;
+  public static final int GT = 16;
+  public static final int GIFT = 35;
   public static final String[] terminalNames = new String[] {
   "EOF",
   "error",
@@ -27,9 +65,47 @@ public class sym {
   "PLUS",
   "MINUS",
   "TIMES",
+  "DIV",
+  "IDIV",
   "MOD",
   "POW",
+  "INC",
+  "DEC",
+  "LT",
+  "LE",
+  "GT",
+  "GE",
+  "EQ",
+  "NE",
+  "AND",
+  "OR",
+  "NOT",
+  "DECIDE",
+  "OF",
+  "ELSE",
+  "END",
+  "LOOP",
+  "EXIT",
+  "WHEN",
+  "FOR",
+  "RETURN",
+  "BREAK",
+  "SHOW",
+  "GET",
+  "GIFT",
+  "NAVIDAD",
+  "COAL",
+  "LPAR",
+  "RPAR",
+  "LBRACE",
+  "RBRACE",
+  "ARROW",
   "IDENT",
+  "INT_LIT",
+  "FLOAT_LIT",
+  "BOOL_LIT",
+  "CHAR_LIT",
+  "STRING_LIT",
   "ERROR"
   };
 }
