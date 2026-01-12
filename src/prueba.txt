@@ -22,9 +22,3 @@ world endl
 esto es comentario multilínea
 puede tener símbolos como @ Σ ¿ ¡ y números 123 4.5
 э
-
-x + 1 endl
-'a' endl
-'\n' endl
-"hola mundo" endl
-"con comillas: \" ok" endl
