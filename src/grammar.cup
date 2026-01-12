@@ -19,10 +19,36 @@ terminal IDENT;
 terminal INT_LIT, FLOAT_LIT, BOOL_LIT, CHAR_LIT, STRING_LIT;
 terminal ERROR;
 
-non terminal program;
+/* ====== No terminales ====== */
+non terminal program, decl_global, main, bloque, sentencias, sentencia, params;
 
+/* ====== Start ====== */
 start with program;
 
-%%
+/* ====== Producciones ====== */
+program ::= decl_global main
+          ;
 
-program ::= WORLD ;
+decl_global ::= WORLD IDENT ENDL
+              ;
+
+main ::= NAVIDAD params bloque
+       | COAL NAVIDAD params bloque
+       ;
+
+params ::= LPAR RPAR
+         ;
+
+bloque ::= LBRACE sentencias RBRACE
+         ;
+
+sentencias ::= /* empty */
+             | sentencias sentencia
+             ;
+
+sentencia ::= SHOW ENDL
+            | LOCAL IDENT ENDL
+            | GET ENDL
+            | BREAK ENDL
+            | RETURN ENDL
+            ;

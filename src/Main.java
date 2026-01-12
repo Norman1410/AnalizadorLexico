@@ -53,6 +53,17 @@ public class Main {
 
             System.out.println("Listo. Tokens guardados en " + rutaSalida);
 
+            try (Reader reader2 = new BufferedReader(new FileReader(rutaEntrada))) {
+                LexicoScanner lexer2 = new LexicoScanner(reader2);
+                Parser parser = new Parser(lexer2);
+
+                parser.parse();
+                System.out.println("Parser: el archivo SI puede ser generado por la gramática.");
+            } catch (Exception ex) {
+                System.out.println("Parser: el archivo NO puede ser generado por la gramática.");
+                System.out.println("Detalle: " + ex.getMessage());
+            }
+
         } catch (Exception e) {
             System.err.println("Error ejecutando el analizador léxico: " + e.getMessage());
             e.printStackTrace();
