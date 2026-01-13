@@ -12,6 +12,7 @@ public class sym {
   public static final int POW = 11;
   public static final int SHOW = 33;
   public static final int GE = 17;
+  public static final int UMINUS = 50;
   public static final int FOR = 30;
   public static final int MINUS = 6;
   public static final int ENDL = 4;
@@ -45,6 +46,7 @@ public class sym {
   public static final int ARROW = 42;
   public static final int LBRACE = 40;
   public static final int ELSE = 25;
+  public static final int TO = 51;
   public static final int RBRACE = 41;
   public static final int NE = 19;
   public static final int BOOL_LIT = 46;
@@ -106,7 +108,9 @@ public class sym {
   "BOOL_LIT",
   "CHAR_LIT",
   "STRING_LIT",
-  "ERROR"
+  "ERROR",
+  "UMINUS",
+  "TO"
   };
 }
 

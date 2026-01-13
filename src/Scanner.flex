@@ -93,9 +93,9 @@ STRING     = \"([^\\\"\r\n]|{ESC})*\"
 ">"            { return tok(sym.GT, yytext()); }
 
 /* Operadores lógicos */
-"@"            { return tok(sym.AND, yytext()); }
-"~"            { return tok(sym.OR, yytext()); }
-"\u03A3"       { return tok(sym.NOT, yytext()); }
+"@" | "and"    { return tok(sym.AND, yytext()); }
+"~" | "or"     { return tok(sym.OR, yytext()); }
+"\u03A3" | "not" { return tok(sym.NOT, yytext()); }
 
 /* Números: primero float para que 12.34 no se parta */
 {FLOAT}        { return tok(sym.FLOAT_LIT, Double.parseDouble(yytext())); }
@@ -128,6 +128,7 @@ STRING     = \"([^\\\"\r\n]|{ESC})*\"
 "gift"         { return tok(sym.GIFT, yytext()); }
 "navidad"      { return tok(sym.NAVIDAD, yytext()); }
 "coal"         { return tok(sym.COAL, yytext()); }
+"to"           { return tok(sym.TO, yytext()); }
 
 /* Identificadores */
 {IDENT}        { return tok(sym.IDENT, yytext()); }

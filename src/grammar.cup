@@ -1,6 +1,6 @@
 import java_cup.runtime.*;
 
-/* ====== Declaraciones ====== */
+/* ====== Declaraciones de Terminales ====== */
 terminal WORLD, LOCAL, ENDL;
 terminal PLUS, MINUS, TIMES, DIV, IDIV, MOD, POW, INC, DEC;
 terminal LT, LE, GT, GE, EQ, NE;
@@ -15,40 +15,194 @@ terminal LPAR, RPAR;      /* ¿ y ? */
 terminal LBRACE, RBRACE;  /* ¡ y ! */
 terminal ARROW;           /* -> */
 
-terminal IDENT;
+terminal String IDENT;
 terminal INT_LIT, FLOAT_LIT, BOOL_LIT, CHAR_LIT, STRING_LIT;
-terminal ERROR;
+terminal ERROR, UMINUS, TO;
 
 /* ====== No terminales ====== */
-non terminal program, decl_global, main, bloque, sentencias, sentencia, params;
+non terminal Object program, decl_list, decl_global, main, bloque, sentencias, sentencia, params;
+non terminal Object expr, literal, io, asign, decl;
+non terminal Object decide_stmt, loop_stmt, for_stmt, casos, cason, else_opt;
+non terminal Object funciones_list, funcion, lista_params, llamada, lista_expr;
+
+/* ====== Precedencia y Asociatividad ====== */
+precedence left OR;
+precedence left AND;
+precedence right NOT;
+precedence left LT, LE, GT, GE, EQ, NE;
+precedence left PLUS, MINUS;
+precedence left TIMES, DIV, IDIV, MOD;
+precedence right POW;
+precedence right INC, DEC, UMINUS;
+precedence left LPAR;
 
 /* ====== Start ====== */
 start with program;
 
 /* ====== Producciones ====== */
-program ::= decl_global main
+program ::= decl_list funciones_list main
+          {: System.out.println("[REGLA] program ::= decl_list funciones_list main"); :}
           ;
 
-decl_global ::= WORLD IDENT ENDL
+decl_list ::= /* empty */
+            | decl_list decl_global
+            ;
+
+funciones_list ::= /* empty */
+                 | funciones_list funcion
+                 ;
+
+decl_global ::= WORLD IDENT:id ENDL
+                {: System.out.println("[REGLA] decl_global ::= WORLD " + id + " ENDL"); :}
+              | WORLD IDENT:id ARROW expr ENDL
+                {: System.out.println("[REGLA] decl_global ::= WORLD " + id + " ARROW expr ENDL"); :}
               ;
 
+funcion ::= GIFT IDENT:id params:p bloque:b
+            {: System.out.println("[REGLA] funcion ::= GIFT " + id + " params bloque"); :}
+          ;
+
 main ::= NAVIDAD params bloque
+         {: System.out.println("[REGLA] main ::= NAVIDAD params bloque"); :}
        | COAL NAVIDAD params bloque
+         {: System.out.println("[REGLA] main ::= COAL NAVIDAD params bloque"); :}
        ;
 
 params ::= LPAR RPAR
+           {: System.out.println("[REGLA] params ::= ¿ ? (vacío)"); :}
+         | LPAR lista_params:l RPAR
+           {: System.out.println("[REGLA] params ::= ¿ lista_params ?"); :}
          ;
 
+lista_params ::= IDENT:id
+                 {: System.out.println("[REGLA] lista_params ::= " + id); :}
+               | lista_params:l IDENT:id
+                 {: System.out.println("[REGLA] lista_params ::= lista_params " + id); :}
+               ;
+
 bloque ::= LBRACE sentencias RBRACE
+           {: System.out.println("[REGLA] bloque ::= ¡ sentencias !"); :}
          ;
 
 sentencias ::= /* empty */
+               {: System.out.println("[REGLA] sentencias ::= vacío"); :}
              | sentencias sentencia
              ;
 
-sentencia ::= SHOW ENDL
-            | LOCAL IDENT ENDL
+sentencia ::= io
+            | asign
+            | decl
+            | decide_stmt
+            | loop_stmt
+            | for_stmt
             | GET ENDL
+              {: System.out.println("[REGLA] sentencia ::= GET ENDL"); :}
             | BREAK ENDL
+              {: System.out.println("[REGLA] sentencia ::= BREAK ENDL"); :}
             | RETURN ENDL
+              {: System.out.println("[REGLA] sentencia ::= RETURN ENDL"); :}
+            | RETURN expr:e ENDL
+              {: System.out.println("[REGLA] sentencia ::= RETURN expr ENDL"); :}
+            | expr:e ENDL
+              {: System.out.println("[REGLA] sentencia ::= expr ENDL"); :}
             ;
+
+decl ::= LOCAL IDENT:id ENDL
+         {: System.out.println("[REGLA] decl ::= LOCAL " + id + " ENDL"); :}
+       | LOCAL IDENT:id ARROW expr ENDL
+         {: System.out.println("[REGLA] decl ::= LOCAL " + id + " -> expr ENDL"); :}
+       ;
+
+/* Estructuras de Control */
+decide_stmt ::= DECIDE expr:e OF casos:c else_opt:el END ENDL
+                {: System.out.println("[REGLA] decide_stmt ::= DECIDE expr OF casos else_opt END ENDL"); :}
+              ;
+
+casos ::= /* empty */
+        | casos cason
+        ;
+
+cason ::= expr:e ARROW bloque:b
+          {: System.out.println("[REGLA] cason ::= expr -> bloque"); :}
+        ;
+
+else_opt ::= /* empty */
+           | ELSE bloque:b
+             {: System.out.println("[REGLA] else_opt ::= ELSE bloque"); :}
+           ;
+
+loop_stmt ::= LOOP bloque:b EXIT WHEN expr:e ENDL END ENDL
+              {: System.out.println("[REGLA] loop_stmt ::= LOOP bloque EXIT WHEN expr ENDL END ENDL"); :}
+            ;
+
+for_stmt ::= FOR IDENT:id ARROW expr:start TO expr:end bloque:b ENDL
+             {: System.out.println("[REGLA] for_stmt ::= FOR " + id + " -> start TO end bloque ENDL"); :}
+           ;
+
+io ::= SHOW expr:e ENDL
+       {: System.out.println("[REGLA] io ::= SHOW expr ENDL"); :}
+     | GET IDENT:id ENDL
+       {: System.out.println("[REGLA] io ::= GET IDENT (" + id + ") ENDL"); :}
+     ;
+
+asign ::= IDENT:id ARROW expr:e ENDL
+          {: System.out.println("[REGLA] asign ::= " + id + " -> expr ENDL"); :}
+        ;
+
+/* Expresiones */
+expr ::= IDENT:id
+         {: System.out.println("[REGLA] expr ::= IDENT (" + id + ")"); RESULT = id; :}
+       | literal:l
+         {: RESULT = l; :}
+       /* Aritméticas */
+       | expr:e1 PLUS  expr:e2 {: System.out.println("[REGLA] expr ::= expr + expr"); :}
+       | expr:e1 MINUS expr:e2 {: System.out.println("[REGLA] expr ::= expr - expr"); :}
+       | expr:e1 TIMES expr:e2 {: System.out.println("[REGLA] expr ::= expr * expr"); :}
+       | expr:e1 DIV   expr:e2 {: System.out.println("[REGLA] expr ::= expr / expr"); :}
+       | expr:e1 IDIV  expr:e2 {: System.out.println("[REGLA] expr ::= expr // expr"); :}
+       | expr:e1 MOD   expr:e2 {: System.out.println("[REGLA] expr ::= expr % expr"); :}
+       | expr:e1 POW   expr:e2 {: System.out.println("[REGLA] expr ::= expr ^ expr"); :}
+       | MINUS expr:e          {: System.out.println("[REGLA] expr ::= - expr (unario)"); :} %prec UMINUS
+       /* Incrementos (prefijo según Anexo I) */
+       | INC IDENT:id          {: System.out.println("[REGLA] expr ::= ++ " + id); :}
+       | DEC IDENT:id          {: System.out.println("[REGLA] expr ::= -- " + id); :}
+       /* Relacionales */
+       | expr:e1 LT expr:e2    {: System.out.println("[REGLA] expr ::= expr < expr"); :}
+       | expr:e1 LE expr:e2    {: System.out.println("[REGLA] expr ::= expr <= expr"); :}
+       | expr:e1 GT expr:e2    {: System.out.println("[REGLA] expr ::= expr > expr"); :}
+       | expr:e1 GE expr:e2    {: System.out.println("[REGLA] expr ::= expr >= expr"); :}
+       | expr:e1 EQ expr:e2    {: System.out.println("[REGLA] expr ::= expr == expr"); :}
+       | expr:e1 NE expr:e2    {: System.out.println("[REGLA] expr ::= expr != expr"); :}
+       /* Lógicas */
+       | expr:e1 AND expr:e2   {: System.out.println("[REGLA] expr ::= expr AND expr"); :}
+       | expr:e1 OR  expr:e2   {: System.out.println("[REGLA] expr ::= expr OR expr"); :}
+       | NOT expr:e            {: System.out.println("[REGLA] expr ::= NOT expr"); :}
+       /* Agrupación */
+       | LPAR expr:e RPAR
+         {: System.out.println("[REGLA] expr ::= ¿ expr ?"); RESULT = e; :}
+       /* Llamada a función */
+       | llamada:ll
+         {: RESULT = ll; :}
+       ;
+
+llamada ::= IDENT:id LPAR RPAR
+            {: System.out.println("[REGLA] llamada ::= " + id + " ¿ ?"); :}
+          | IDENT:id LPAR lista_expr:l RPAR
+            {: System.out.println("[REGLA] llamada ::= " + id + " ¿ lista_expr ?"); :}
+          ;
+
+lista_expr ::= expr:e
+               {: System.out.println("[REGLA] lista_expr ::= expr"); :}
+             | lista_expr:l expr:e
+               {: System.out.println("[REGLA] lista_expr ::= lista_expr expr"); :}
+             ;
+
+literal ::= INT_LIT:n
+            {: System.out.println("[REGLA] literal ::= INT_LIT (" + n + ")"); RESULT = n; :}
+          | FLOAT_LIT:f
+            {: System.out.println("[REGLA] literal ::= FLOAT_LIT (" + f + ")"); RESULT = f; :}
+          | STRING_LIT:s
+            {: System.out.println("[REGLA] literal ::= STRING_LIT (" + s + ")"); RESULT = s; :}
+          | BOOL_LIT:b
+            {: System.out.println("[REGLA] literal ::= BOOL_LIT (" + b + ")"); RESULT = b; :}
+          ;
