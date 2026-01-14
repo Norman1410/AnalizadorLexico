@@ -6,6 +6,7 @@ import java.io.Reader;
 import java.lang.reflect.Field;
 
 import java_cup.runtime.Symbol;
+import java.util.*;
 
 public class Main {
 
@@ -21,7 +22,7 @@ public class Main {
         String rutaSalida = "tokens_salida.txt";
 
         try (Reader reader = new BufferedReader(new FileReader(rutaEntrada));
-             PrintWriter out = new PrintWriter(new FileWriter(rutaSalida))) {
+                PrintWriter out = new PrintWriter(new FileWriter(rutaSalida))) {
 
             // Scanner generado por JFlex
             LexicoScanner lexer = new LexicoScanner(reader);
@@ -57,11 +58,26 @@ public class Main {
                 LexicoScanner lexer2 = new LexicoScanner(reader2);
                 Parser parser = new Parser(lexer2);
 
-                parser.parse();
-                System.out.println("Parser: el archivo SI puede ser generado por la gramática.");
+                Symbol root = parser.parse();
+                ast.ProgramNode program = (ast.ProgramNode) root.value;
+
+                System.out.println("\nParser: el archivo SI puede ser generado por la gramática.");
+                System.out.println("=== ÁRBOL SINTÁCTICO GENERADO ===");
+                if (program != null) {
+                    program.print(0);
+
+                    // Exportar a JSON para el visualizador web
+                    Map<String, Object> astJson = program.toJsonObject();
+                    String jsonString = toJsonString(astJson);
+                    try (FileWriter writer = new FileWriter("ast_output.json")) {
+                        writer.write(jsonString);
+                        System.out.println("\nAST exportado con éxito a 'ast_output.json'");
+                    }
+                }
             } catch (Exception ex) {
-                System.out.println("Parser: el archivo NO puede ser generado por la gramática.");
+                System.out.println("\nParser: el archivo NO puede ser generado por la gramática.");
                 System.out.println("Detalle: " + ex.getMessage());
+                // ex.printStackTrace(); // Para debugging profundo
             }
 
         } catch (Exception e) {
@@ -73,19 +89,58 @@ public class Main {
     // Convierte el id numérico del token a su nombre (ej: 3 -> WORLD).
     // Así no tengo que mantener un switch enorme a mano.
     private static String nombreDeToken(int id) {
-        try {
-            Field[] campos = sym.class.getFields();
-            for (Field f : campos) {
-                if (f.getType() == int.class) {
-                    int valor = f.getInt(null);
-                    if (valor == id) {
-                        return f.getName();
-                    }
-                }
-            }
-        } catch (Exception e) {
-            // Si falla, devuelvo el id como texto y ya.
-        }
+        // ... (código existente)
         return String.valueOf(id);
+    }
+
+    /**
+     * Serializador JSON simple y recursivo para evitar dependencias externas.
+     */
+    private static String toJsonString(Object obj) {
+        if (obj == null)
+            return "null";
+        if (obj instanceof String)
+            return "\"" + escapeJson((String) obj) + "\"";
+        if (obj instanceof Number || obj instanceof Boolean)
+            return obj.toString();
+
+        if (obj instanceof List) {
+            List<?> list = (List<?>) obj;
+            StringBuilder sb = new StringBuilder("[");
+            for (int i = 0; i < list.size(); i++) {
+                sb.append(toJsonString(list.get(i)));
+                if (i < list.size() - 1)
+                    sb.append(",");
+            }
+            sb.append("]");
+            return sb.toString();
+        }
+
+        if (obj instanceof Map) {
+            Map<?, ?> map = (Map<?, ?>) obj;
+            StringBuilder sb = new StringBuilder("{");
+            int i = 0;
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                sb.append("\"").append(entry.getKey()).append("\":");
+                sb.append(toJsonString(entry.getValue()));
+                if (i < map.size() - 1)
+                    sb.append(",");
+                i++;
+            }
+            sb.append("}");
+            return sb.toString();
+        }
+
+        return "\"" + obj.toString() + "\"";
+    }
+
+    private static String escapeJson(String s) {
+        return s.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\b", "\\b")
+                .replace("\f", "\\f")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
     }
 }

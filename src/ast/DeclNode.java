@@ -1,0 +1,49 @@
+package ast;
+
+import java.util.*;
+
+public class DeclNode extends ASTNode {
+    private String identifier;
+    private ASTNode initializer;
+    private boolean isGlobal;
+    private String varType;
+    private List<Integer> dimensions;
+
+    public DeclNode(String identifier, ASTNode initializer, boolean isGlobal, String varType, List<Integer> dimensions,
+            int line, int column) {
+        super(line, column);
+        this.identifier = identifier;
+        this.initializer = initializer;
+        this.isGlobal = isGlobal;
+        this.varType = varType;
+        this.dimensions = dimensions;
+    }
+
+    @Override
+    public Map<String, Object> toJsonObject() {
+        Map<String, Object> node = createNode("Declaration");
+        node.put("identifier", identifier);
+        node.put("varType", varType);
+        if (dimensions != null && !dimensions.isEmpty()) {
+            node.put("dimensions", dimensions);
+        }
+        node.put("isGlobal", isGlobal);
+        if (initializer != null)
+            node.put("initializer", initializer.toJsonObject());
+        return node;
+    }
+
+    @Override
+    public void print(int indent) {
+        printIndent(indent);
+        String dimStr = "";
+        if (dimensions != null) {
+            for (int d : dimensions)
+                dimStr += "[" + d + "]";
+        }
+        System.out.println(
+                (isGlobal ? "Global" : "Local") + " Declaration: " + identifier + " (" + varType + dimStr + ")");
+        if (initializer != null)
+            initializer.print(indent + 1);
+    }
+}
