@@ -6,24 +6,23 @@
 /** CUP generated class containing symbol constants. */
 public class sym {
   /* terminals */
-  public static final int FLOAT_LIT = 57;
-  public static final int CHAR_LIT = 60;
+  public static final int FLOAT_LIT = 54;
+  public static final int CHAR_LIT = 57;
   public static final int WHEN = 29;
   public static final int POW = 11;
   public static final int SHOW = 33;
-  public static final int LBRACKET = 45;
+  public static final int LBRACKET = 44;
   public static final int CHAR = 40;
   public static final int GE = 17;
-  public static final int UMINUS = 62;
+  public static final int UMINUS = 59;
   public static final int INT = 38;
   public static final int FOR = 30;
   public static final int MINUS = 6;
-  public static final int SEMICOLON = 44;
   public static final int ENDL = 4;
   public static final int NOT = 22;
   public static final int AND = 20;
   public static final int LT = 14;
-  public static final int RPAR = 51;
+  public static final int RPAR = 48;
   public static final int DECIDE = 23;
   public static final int COAL = 37;
   public static final int OR = 21;
@@ -36,38 +35,35 @@ public class sym {
   public static final int LOOP = 27;
   public static final int PLUS = 5;
   public static final int EXIT = 28;
-  public static final int ASSIGN = 49;
+  public static final int ASSIGN = 46;
   public static final int LE = 15;
   public static final int OF = 24;
   public static final int BOOLEAN = 42;
   public static final int EOF = 0;
   public static final int RETURN = 31;
-  public static final int RBRACKET = 46;
+  public static final int RBRACKET = 45;
   public static final int error = 1;
-  public static final int LCURLY = 47;
   public static final int MOD = 10;
-  public static final int IDENT = 55;
+  public static final int IDENT = 52;
   public static final int BREAK = 32;
   public static final int WORLD = 2;
   public static final int EQ = 18;
-  public static final int ERROR = 61;
-  public static final int RCURLY = 48;
+  public static final int ERROR = 58;
   public static final int TIMES = 7;
-  public static final int ARROW = 54;
-  public static final int LBRACE = 52;
+  public static final int ARROW = 51;
+  public static final int LBRACE = 49;
   public static final int ELSE = 25;
-  public static final int TO = 63;
   public static final int FLOAT = 39;
-  public static final int RBRACE = 53;
+  public static final int RBRACE = 50;
   public static final int NE = 19;
-  public static final int BOOL_LIT = 58;
+  public static final int BOOL_LIT = 55;
   public static final int END = 26;
-  public static final int LPAR = 50;
+  public static final int LPAR = 47;
   public static final int STRING = 41;
   public static final int LOCAL = 3;
   public static final int DEC = 13;
-  public static final int STRING_LIT = 59;
-  public static final int INT_LIT = 56;
+  public static final int STRING_LIT = 56;
+  public static final int INT_LIT = 53;
   public static final int GT = 16;
   public static final int GIFT = 35;
   public static final String[] terminalNames = new String[] {
@@ -115,11 +111,8 @@ public class sym {
   "STRING",
   "BOOLEAN",
   "COMMA",
-  "SEMICOLON",
   "LBRACKET",
   "RBRACKET",
-  "LCURLY",
-  "RCURLY",
   "ASSIGN",
   "LPAR",
   "RPAR",
@@ -133,8 +126,7 @@ public class sym {
   "STRING_LIT",
   "CHAR_LIT",
   "ERROR",
-  "UMINUS",
-  "TO"
+  "UMINUS"
   };
 }
 

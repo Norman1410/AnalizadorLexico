@@ -48,19 +48,19 @@ STRING     = \"([^\\\"\r\n]|{ESC})*\"
 "|"[^\r\n]*    { /* se ignora */ }
 
 /* Comentario multilínea: empieza con є y termina con э */
-"\u0454"       { yybegin(COMMENT); }   /* є */
-
-<COMMENT>"\u044D" { yybegin(YYINITIAL); }  /* э */
-
-/* Dentro del comentario multilínea ignoramos toodo */
-<COMMENT>[^\r\n]+ { /* se ignora */ }
-<COMMENT>\r       { /* se ignora */ }
-<COMMENT>\n       { /* se ignora */ }
+"\u0454" [^\u044D]* "\u044D" { /* se ignora: desde є hasta э */ }
 
 /* Ejemplo mínimo: palabras reservadas y símbolos */
 "world"        { return tok(sym.WORLD); }
 "local"        { return tok(sym.LOCAL); }
 "endl"         { return tok(sym.ENDL); }
+
+/* Tipos de datos */
+"int"          { return tok(sym.INT); }
+"float"        { return tok(sym.FLOAT); }
+"char"         { return tok(sym.CHAR); }
+"string"       { return tok(sym.STRING); }
+"boolean"      { return tok(sym.BOOLEAN); }
 
 /* Delimitadores especiales del lenguaje */
 "\u00BF"       { return tok(sym.LPAR, yytext()); }   /* ¿ */
@@ -69,8 +69,12 @@ STRING     = \"([^\\\"\r\n]|{ESC})*\"
 "\u00A1"       { return tok(sym.LBRACE, yytext()); } /* ¡ */
 "!"            { return tok(sym.RBRACE, yytext()); } /* ! */
 
-/* Flecha */
+/* Flecha y asignación */
 "->"           { return tok(sym.ARROW, yytext()); }
+"="            { return tok(sym.ASSIGN, yytext()); }
+","            { return tok(sym.COMMA, yytext()); }
+"["            { return tok(sym.LBRACKET, yytext()); }
+"]"            { return tok(sym.RBRACKET, yytext()); }
 
 /* Operadores (poner primero los de 2 caracteres) */
 "//"           { return tok(sym.IDIV, yytext()); }
@@ -93,9 +97,9 @@ STRING     = \"([^\\\"\r\n]|{ESC})*\"
 ">"            { return tok(sym.GT, yytext()); }
 
 /* Operadores lógicos */
-"@" | "and"    { return tok(sym.AND, yytext()); }
-"~" | "or"     { return tok(sym.OR, yytext()); }
-"\u03A3" | "not" { return tok(sym.NOT, yytext()); }
+"@"            { return tok(sym.AND, yytext()); }
+"~"            { return tok(sym.OR, yytext()); }
+"\u03A3"       { return tok(sym.NOT, yytext()); }
 
 /* Números: primero float para que 12.34 no se parta */
 {FLOAT}        { return tok(sym.FLOAT_LIT, Double.parseDouble(yytext())); }
@@ -125,10 +129,9 @@ STRING     = \"([^\\\"\r\n]|{ESC})*\"
 "show"         { return tok(sym.SHOW, yytext()); }
 "get"          { return tok(sym.GET, yytext()); }
 
-"gift"         { return tok(sym.GIFT, yytext()); }
+"gift" | "gitf" { return tok(sym.GIFT, yytext()); }
 "navidad"      { return tok(sym.NAVIDAD, yytext()); }
 "coal"         { return tok(sym.COAL, yytext()); }
-"to"           { return tok(sym.TO, yytext()); }
 
 /* Identificadores */
 {IDENT}        { return tok(sym.IDENT, yytext()); }

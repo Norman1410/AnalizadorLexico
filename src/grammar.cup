@@ -28,7 +28,7 @@ terminal GIFT, NAVIDAD, COAL;
 
 /* Tipos */
 terminal INT, FLOAT, CHAR, STRING, BOOLEAN; 
-terminal COMMA, SEMICOLON, LBRACKET, RBRACKET, LCURLY, RCURLY, ASSIGN;
+terminal COMMA, LBRACKET, RBRACKET, ASSIGN;
 
 terminal LPAR, RPAR;      /* ¿ y ? */
 terminal LBRACE, RBRACE;  /* ¡ y ! */
@@ -40,7 +40,7 @@ terminal Object FLOAT_LIT;
 terminal Object BOOL_LIT;
 terminal String STRING_LIT;
 terminal String CHAR_LIT;
-terminal ERROR, UMINUS, TO;
+terminal ERROR, UMINUS;
 
 /*  No terminales  */
 non terminal ProgramNode program;
@@ -227,8 +227,6 @@ loop_stmt ::= LOOP sentencias:s EXIT WHEN expr:e ENDL END LOOP ENDL
 
 for_stmt ::= FOR LPAR decl:d ENDL expr:cond ENDL expr:step RPAR bloque:b
              {: RESULT = new ForNode(d, cond, step, b, dleft, dright); :}
-           | FOR IDENT:id ARROW expr:start TO expr:end bloque:b ENDL
-             {: RESULT = new ForNode(new VariableNode(id, idleft, idright), start, end, b, idleft, idright); :}
            | FOR LPAR decl:d expr:cond ENDL expr:step RPAR bloque:b
              {: RESULT = new ForNode(d, cond, step, b, dleft, dright); :}
            ;
