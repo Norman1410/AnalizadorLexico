@@ -50,7 +50,7 @@ STRING     = \"([^\\\"\r\n]|{ESC})*\"
 /* Comentario multilínea: empieza con є y termina con э */
 "\u0454" [^\u044D]* "\u044D" { /* se ignora: desde є hasta э */ }
 
-/* Ejemplo mínimo: palabras reservadas y símbolos */
+/* Palabras reservadas y símbolos básicos */
 "world"        { return tok(sym.WORLD); }
 "local"        { return tok(sym.LOCAL); }
 "endl"         { return tok(sym.ENDL); }

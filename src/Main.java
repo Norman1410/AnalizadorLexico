@@ -11,7 +11,6 @@ import semantics.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-
 public class Main {
 
     public static void main(String[] args) {
@@ -66,9 +65,7 @@ public class Main {
                 ast.ProgramNode program = (ast.ProgramNode) root.value;
 
                 System.out.println("\nParser: el archivo SI puede ser generado por la gramática.");
-                System.out.println("=== ÁRBOL SINTÁCTICO GENERADO ===");
                 if (program != null) {
-                    program.print(0);
                     // =====================
                     // TABLA DE SÍMBOLOS (desde ProgramNode)
                     // =====================
@@ -76,7 +73,9 @@ public class Main {
                     System.out.println("\n=== TABLA DE SÍMBOLOS ===");
                     System.out.println(symtab.toPrettyStringByScope());
 
-                    Files.writeString(Paths.get("symbol_table.txt"), symtab.toPrettyStringByScope());
+                    try (PrintWriter stWriter = new PrintWriter(new FileWriter("symbol_table.txt"))) {
+                        stWriter.print(symtab.toPrettyStringByScope());
+                    }
                     System.out.println("Tabla de símbolos exportada a 'symbol_table.txt'");
 
                     // =====================
@@ -109,10 +108,10 @@ public class Main {
             if (id >= 0 && id < sym.terminalNames.length) {
                 return sym.terminalNames[id];
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return "TOKEN_" + id;
     }
-
 
     /**
      * Serializador JSON simple y recursivo para evitar dependencias externas.
