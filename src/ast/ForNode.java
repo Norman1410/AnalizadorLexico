@@ -52,4 +52,13 @@ public class ForNode extends ASTNode {
         if (block != null)
             block.print(indent + 1);
     }
+    public BlockNode getBody() {
+        return (block instanceof BlockNode) ? (BlockNode) block : null;
+    }
+
+    public ASTNode getInit() {
+        return init;
+    }
+
+
 }

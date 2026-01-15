@@ -50,4 +50,20 @@ public class FunctionNode extends ASTNode {
         if (block != null)
             block.print(indent + 1);
     }
+    public String getName() {
+        return name;
+    }
+
+    public String getReturnType() {
+        return returnType;
+    }
+
+    public List<ParamNode> getParams() {
+        return (parameters == null) ? Collections.emptyList() : parameters;
+    }
+
+
+    public BlockNode getBlock() {
+        return (block instanceof BlockNode) ? (BlockNode) block : null;
+    }
 }

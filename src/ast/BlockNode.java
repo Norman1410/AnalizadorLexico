@@ -31,4 +31,8 @@ public class BlockNode extends ASTNode {
                 s.print(indent + 1);
         }
     }
+    public List<ASTNode> getStatements() {
+        return statements;
+    }
+
 }

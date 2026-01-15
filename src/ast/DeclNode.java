@@ -46,4 +46,20 @@ public class DeclNode extends ASTNode {
         if (initializer != null)
             initializer.print(indent + 1);
     }
+    public String getName() {
+        return identifier;
+    }
+
+    public String getTypeName() {
+        return varType;
+    }
+
+    public boolean isGlobal() {
+        return isGlobal;
+    }
+
+    public List<Integer> getDims() {
+        return (dimensions == null) ? Collections.emptyList() : dimensions;
+    }
+
 }

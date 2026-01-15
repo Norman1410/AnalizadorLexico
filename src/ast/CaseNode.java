@@ -31,4 +31,8 @@ public class CaseNode extends ASTNode {
         if (block != null)
             block.print(indent + 1);
     }
+    public BlockNode getBlock() {
+        return (block instanceof BlockNode) ? (BlockNode) block : null;
+    }
+
 }

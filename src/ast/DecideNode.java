@@ -50,4 +50,17 @@ public class DecideNode extends ASTNode {
             elseBlock.print(indent + 2);
         }
     }
+    public List<CaseNode> getCases() {
+        if (cases == null) return Collections.emptyList();
+        List<CaseNode> out = new ArrayList<>();
+        for (ASTNode n : cases) {
+            if (n instanceof CaseNode cn) out.add(cn);
+        }
+        return out;
+    }
+
+    public BlockNode getElseBlock() {
+        return (elseBlock instanceof BlockNode) ? (BlockNode) elseBlock : null;
+    }
+
 }

@@ -7,6 +7,10 @@ import java.lang.reflect.Field;
 
 import java_cup.runtime.Symbol;
 import java.util.*;
+import semantics.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
 
 public class Main {
 
@@ -65,10 +69,22 @@ public class Main {
                 System.out.println("=== ÁRBOL SINTÁCTICO GENERADO ===");
                 if (program != null) {
                     program.print(0);
+                    // =====================
+                    // TABLA DE SÍMBOLOS (desde ProgramNode)
+                    // =====================
+                    SymbolTable symtab = program.buildSymbolTable();
+                    System.out.println("\n=== TABLA DE SÍMBOLOS ===");
+                    System.out.println(symtab.toPrettyStringByScope());
 
-                    // Exportar a JSON para el visualizador web
+                    Files.writeString(Paths.get("symbol_table.txt"), symtab.toPrettyStringByScope());
+                    System.out.println("Tabla de símbolos exportada a 'symbol_table.txt'");
+
+                    // =====================
+                    // EXPORTAR AST A JSON
+                    // =====================
                     Map<String, Object> astJson = program.toJsonObject();
                     String jsonString = toJsonString(astJson);
+
                     try (FileWriter writer = new FileWriter("ast_output.json")) {
                         writer.write(jsonString);
                         System.out.println("\nAST exportado con éxito a 'ast_output.json'");
@@ -89,9 +105,14 @@ public class Main {
     // Convierte el id numérico del token a su nombre (ej: 3 -> WORLD).
     // Así no tengo que mantener un switch enorme a mano.
     private static String nombreDeToken(int id) {
-        // ... (código existente)
-        return String.valueOf(id);
+        try {
+            if (id >= 0 && id < sym.terminalNames.length) {
+                return sym.terminalNames[id];
+            }
+        } catch (Exception ignored) {}
+        return "TOKEN_" + id;
     }
+
 
     /**
      * Serializador JSON simple y recursivo para evitar dependencias externas.

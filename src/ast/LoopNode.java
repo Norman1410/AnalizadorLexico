@@ -34,4 +34,8 @@ public class LoopNode extends ASTNode {
             exitCondition.print(indent + 2);
         }
     }
+    public BlockNode getBody() {
+        return (block instanceof BlockNode) ? (BlockNode) block : null;
+    }
+
 }
