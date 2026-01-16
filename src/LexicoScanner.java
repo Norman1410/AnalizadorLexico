@@ -876,7 +876,7 @@ public class LexicoScanner implements java_cup.runtime.Scanner {
             // fall through
           case 84: break;
           case 25: 
-            { /* se ignora: desde є hasta э */
+            { /* se ignora: desde є hasta �? */
             } 
             // fall through
           case 85: break;

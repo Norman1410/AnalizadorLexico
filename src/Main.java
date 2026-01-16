@@ -64,7 +64,13 @@ public class Main {
                 Symbol root = parser.parse();
                 ast.ProgramNode program = (ast.ProgramNode) root.value;
 
-                System.out.println("\nParser: el archivo SI puede ser generado por la gramática.");
+                if (parser.getSyntaxErrors() == 0) {
+                    System.out.println("\nParser: el archivo SI puede ser generado por la gramática.");
+                } else {
+                    System.out.println("\nParser: el archivo NO puede ser generado por la gramática.");
+                    System.out.println("Cantidad de errores sintácticos: " + parser.getSyntaxErrors());
+                }
+
                 if (program != null) {
                     // =====================
                     // TABLA DE SÍMBOLOS (desde ProgramNode)

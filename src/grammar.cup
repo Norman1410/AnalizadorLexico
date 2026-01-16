@@ -4,12 +4,25 @@ import java.util.*;
 
 /*  Código del Parser  */
 parser code {:
+    private int syntaxErrors = 0;
+
+    public int getSyntaxErrors() {
+        return syntaxErrors;
+    }
+
+    @Override
     public void syntax_error(Symbol cur_token) {
-        System.err.println("Error sintáctico en línea " + cur_token.left + ", columna " + cur_token.right);
-        System.err.println("Token no esperado: " + sym.terminalNames[cur_token.sym] + 
+        syntaxErrors++;
+
+        int line = cur_token.left + 1;
+        int col  = cur_token.right + 1;
+
+        System.err.println("Error sintáctico en línea " + line + ", columna " + col);
+        System.err.println("Token no esperado: " + sym.terminalNames[cur_token.sym] +
             (cur_token.value != null ? " (" + cur_token.value + ")" : ""));
     }
 
+    @Override
     public void unrecovered_syntax_error(Symbol cur_token) throws java.lang.Exception {
         System.err.println("Error fatal: No se pudo recuperar del error sintáctico.");
     }
