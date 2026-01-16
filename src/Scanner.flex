@@ -47,8 +47,8 @@ STRING     = \"([^\\\"\r\n]|{ESC})*\"
 /* Comentario de una línea: empieza con | y se ignora hasta fin de línea */
 "|"[^\r\n]*    { /* se ignora */ }
 
-/* Comentario multilínea: empieza con є y termina con э */
-"\u0454" [^\u044D]* "\u044D" { /* se ignora: desde є hasta э */ }
+/* Comentarios multilínea: є ... э */
+"\u0454" [^\u044D]* "\u044D" { /* ignorar comentario */ }
 
 /* Palabras reservadas y símbolos básicos */
 "world"        { return tok(sym.WORLD); }
@@ -71,10 +71,10 @@ STRING     = \"([^\\\"\r\n]|{ESC})*\"
 
 /* Flecha y asignación */
 "->"           { return tok(sym.ARROW, yytext()); }
-"="            { return tok(sym.ASSIGN, yytext()); }
-","            { return tok(sym.COMMA, yytext()); }
-"["            { return tok(sym.LBRACKET, yytext()); }
-"]"            { return tok(sym.RBRACKET, yytext()); }
+"\u003D"       { return tok(sym.ASSIGN, yytext()); } /* = */
+"\u002C"       { return tok(sym.COMMA, yytext()); }  /* , */
+"\u005B"       { return tok(sym.LBRACKET, yytext()); } /* [ */
+"\u005D"       { return tok(sym.RBRACKET, yytext()); } /* ] */
 
 /* Operadores (poner primero los de 2 caracteres) */
 "//"           { return tok(sym.IDIV, yytext()); }
@@ -86,20 +86,20 @@ STRING     = \"([^\\\"\r\n]|{ESC})*\"
 "=="           { return tok(sym.EQ, yytext()); }
 "!="           { return tok(sym.NE, yytext()); }
 
-"+"            { return tok(sym.PLUS, yytext()); }
-"-"            { return tok(sym.MINUS, yytext()); }
-"*"            { return tok(sym.TIMES, yytext()); }
-"/"            { return tok(sym.DIV, yytext()); }
-"%"            { return tok(sym.MOD, yytext()); }
-"^"            { return tok(sym.POW, yytext()); }
+"\u002B"       { return tok(sym.PLUS, yytext()); }  /* + */
+"\u002D"       { return tok(sym.MINUS, yytext()); } /* - */
+"\u002A"       { return tok(sym.TIMES, yytext()); } /* * */
+"\u002F"       { return tok(sym.DIV, yytext()); }   /* / */
+"\u0025"       { return tok(sym.MOD, yytext()); }   /* % */
+"\u005E"       { return tok(sym.POW, yytext()); }   /* ^ */
 
-"<"            { return tok(sym.LT, yytext()); }
-">"            { return tok(sym.GT, yytext()); }
+"\u003C"       { return tok(sym.LT, yytext()); }    /* < */
+"\u003E"       { return tok(sym.GT, yytext()); }    /* > */
 
 /* Operadores lógicos */
-"@"            { return tok(sym.AND, yytext()); }
-"~"            { return tok(sym.OR, yytext()); }
-"\u03A3"       { return tok(sym.NOT, yytext()); }
+"\u0040"       { return tok(sym.AND, yytext()); }   /* @ */
+"\u007E"       { return tok(sym.OR, yytext()); }    /* ~ */
+"\u03A3"       { return tok(sym.NOT, yytext()); }   /* Σ */
 
 /* Números: primero float para que 12.34 no se parta */
 {FLOAT}        { return tok(sym.FLOAT_LIT, Double.parseDouble(yytext())); }

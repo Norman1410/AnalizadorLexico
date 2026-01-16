@@ -4,7 +4,7 @@
 є !@#$$%^& multilinea
   э
 
-gitf float _mi_  ¿ int _dif_, char _otra_ ? ¡ 
+gift float _mi_  ¿ int _dif_, char _otra_ ? ¡ 
 	local int _otra_ endl
 	local int miArr[2][2] endl
 	local int miArr[2][2] = ¡¡1,2!¡3,4!! endl

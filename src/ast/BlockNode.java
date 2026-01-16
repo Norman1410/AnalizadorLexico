@@ -15,8 +15,10 @@ public class BlockNode extends ASTNode {
         Map<String, Object> node = createNode("Block");
         List<Map<String, Object>> stmtsJson = new ArrayList<>();
         if (statements != null) {
-            for (ASTNode s : statements)
-                stmtsJson.add(s.toJsonObject());
+            for (ASTNode s : statements) {
+                if (s != null)
+                    stmtsJson.add(s.toJsonObject());
+            }
         }
         node.put("statements", stmtsJson);
         return node;
@@ -27,10 +29,13 @@ public class BlockNode extends ASTNode {
         printIndent(indent);
         System.out.println("Block");
         if (statements != null) {
-            for (ASTNode s : statements)
-                s.print(indent + 1);
+            for (ASTNode s : statements) {
+                if (s != null)
+                    s.print(indent + 1);
+            }
         }
     }
+
     public List<ASTNode> getStatements() {
         return statements;
     }

@@ -2,6 +2,7 @@ import java_cup.runtime.*;
 import ast.*;
 import java.util.*;
 
+
 /*  Código del Parser  */
 parser code {:
     private int syntaxErrors = 0;
@@ -88,7 +89,7 @@ precedence right POW;
 precedence right INC, DEC, UMINUS;
 precedence left LPAR;
 
-/*  Start  */
+
 start with program;
 
 /*  Producciones  */
@@ -235,6 +236,8 @@ else_opt ::= /* empty */
            ;
 
 loop_stmt ::= LOOP sentencias:s EXIT WHEN expr:e ENDL END LOOP ENDL
+              {: RESULT = new LoopNode(new BlockNode(s, sleft, sright), e, sleft, sright); :}
+            | LOOP sentencias:s EXIT WHEN expr:e ENDL END LOOP
               {: RESULT = new LoopNode(new BlockNode(s, sleft, sright), e, sleft, sright); :}
             ;
 
