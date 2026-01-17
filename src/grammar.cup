@@ -144,8 +144,6 @@ lista_params ::= param:p
                  {: List<ParamNode> l = new ArrayList<ParamNode>(); l.add(p); RESULT = l; :}
                | lista_params:l COMMA param:p
                  {: l.add(p); RESULT = l; :}
-               | lista_params:l param:p
-                 {: l.add(p); RESULT = l; :}
                ;
 
 param ::= tipo:t IDENT:id
@@ -249,19 +247,15 @@ for_stmt ::= FOR LPAR decl:d ENDL expr:cond ENDL expr:step RPAR bloque:b
 
 io ::= SHOW expr:e ENDL
        {: RESULT = new ShowNode(e, eleft, eright); :}
-     | SHOW expr:e
-       {: RESULT = new ShowNode(e, eleft, eright); :}
      | GET IDENT:id ENDL
        {: RESULT = new GetNode(new VariableNode(id, idleft, idright), idleft, idright); :}
      ;
 
 asign ::= IDENT:id ARROW expr:e ENDL
-           {: RESULT = new AssignNode(new VariableNode(id, idleft, idright), e, idleft, idright); :}
-         | IDENT:id ASSIGN expr:e ENDL
-           {: RESULT = new AssignNode(new VariableNode(id, idleft, idright), e, idleft, idright); :}
-         | IDENT:id ASSIGN expr:e
-           {: RESULT = new AssignNode(new VariableNode(id, idleft, idright), e, idleft, idright); :}
-         ;
+            {: RESULT = new AssignNode(new VariableNode(id, idleft, idright), e, idleft, idright); :}
+          | IDENT:id ASSIGN expr:e ENDL
+            {: RESULT = new AssignNode(new VariableNode(id, idleft, idright), e, idleft, idright); :}
+          ;
 
 expr ::= IDENT:id {: RESULT = new VariableNode(id, idleft, idright); :}
        | literal:l {: RESULT = l; :}
@@ -298,8 +292,6 @@ llamada ::= IDENT:id LPAR RPAR
 lista_expr ::= expr:e
                 {: List<ASTNode> l = new ArrayList<ASTNode>(); l.add(e); RESULT = l; :}
               | lista_expr:l COMMA expr:e
-                {: l.add(e); RESULT = l; :}
-              | lista_expr:l expr:e
                 {: l.add(e); RESULT = l; :}
               ;
 

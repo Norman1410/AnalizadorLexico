@@ -14,11 +14,11 @@ import java_cup.runtime.Symbol;
 /* Helpers para crear tokens */
 %{
   private Symbol tok(int type) {
-    return new Symbol(type, yyline + 1, yycolumn + 1, yytext());
+    return new Symbol(type, yyline, yycolumn, yytext());
   }
 
   private Symbol tok(int type, Object value) {
-    return new Symbol(type, yyline + 1, yycolumn + 1, value);
+    return new Symbol(type, yyline, yycolumn, value);
   }
 %}
 
