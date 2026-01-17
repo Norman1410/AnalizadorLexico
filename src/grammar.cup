@@ -74,7 +74,7 @@ non terminal List<ASTNode> funciones_list;
 non terminal FunctionNode funcion;
 non terminal List<ParamNode> lista_params;
 non terminal CallNode llamada;
-non terminal List<ASTNode> lista_expr;
+non terminal List<ASTNode> lista_expr, lista_init;
 non terminal String tipo;
 non terminal ParamNode param;
 
@@ -128,10 +128,10 @@ funcion ::= GIFT tipo:t IDENT:id params:p bloque:b
             {: RESULT = new FunctionNode(id, t, p, b, idleft, idright); :}
           ;
 
-main_nav ::= NAVIDAD params:p bloque:b
-         {: RESULT = new MainNode(b, false, pleft, pright); :}
-       | COAL NAVIDAD params:p bloque:b
-         {: RESULT = new MainNode(b, true, pleft, pright); :}
+main_nav ::= NAVIDAD:n params:p bloque:b
+         {: RESULT = new MainNode(b, false, nleft, nright); :}
+       | COAL NAVIDAD:n params:p bloque:b
+         {: RESULT = new MainNode(b, true, nleft, nright); :}
        ;
 
 params ::= LPAR RPAR
@@ -205,10 +205,10 @@ decl ::= LOCAL tipo:t IDENT:id ENDL
          {: RESULT = new DeclNode(id, e, false, t, new ArrayList<>(), idleft, idright); :}
        ;
 
-decide_stmt ::= DECIDE OF casos:c else_opt:el END DECIDE ENDL
-                {: RESULT = new DecideNode(null, c, el, cleft, cright); :}
-              | DECIDE OF casos:c else_opt:el END DECIDE
-                {: RESULT = new DecideNode(null, c, el, cleft, cright); :}
+decide_stmt ::= DECIDE:d OF casos:c else_opt:el END DECIDE ENDL
+                {: RESULT = new DecideNode(null, c, el, dleft, dright); :}
+              | DECIDE:d OF casos:c else_opt:el END DECIDE
+                {: RESULT = new DecideNode(null, c, el, dleft, dright); :}
               ;
 
 casos ::= /* empty */
@@ -233,22 +233,22 @@ else_opt ::= /* empty */
              {: RESULT = b; :}
            ;
 
-loop_stmt ::= LOOP sentencias:s EXIT WHEN expr:e ENDL END LOOP ENDL
-              {: RESULT = new LoopNode(new BlockNode(s, sleft, sright), e, sleft, sright); :}
-            | LOOP sentencias:s EXIT WHEN expr:e ENDL END LOOP
-              {: RESULT = new LoopNode(new BlockNode(s, sleft, sright), e, sleft, sright); :}
+loop_stmt ::= LOOP:l sentencias:s EXIT WHEN expr:e ENDL END LOOP ENDL
+              {: RESULT = new LoopNode(new BlockNode(s, sleft, sright), e, lleft, lright); :}
+            | LOOP:l sentencias:s EXIT WHEN expr:e ENDL END LOOP
+              {: RESULT = new LoopNode(new BlockNode(s, sleft, sright), e, lleft, lright); :}
             ;
 
-for_stmt ::= FOR LPAR decl:d ENDL expr:cond ENDL expr:step RPAR bloque:b
-             {: RESULT = new ForNode(d, cond, step, b, dleft, dright); :}
-           | FOR LPAR decl:d expr:cond ENDL expr:step RPAR bloque:b
-             {: RESULT = new ForNode(d, cond, step, b, dleft, dright); :}
+for_stmt ::= FOR:f LPAR decl:d ENDL expr:cond ENDL expr:step RPAR bloque:b
+             {: RESULT = new ForNode(d, cond, step, b, fleft, fright); :}
+           | FOR:f LPAR decl:d expr:cond ENDL expr:step RPAR bloque:b
+             {: RESULT = new ForNode(d, cond, step, b, fleft, fright); :}
            ;
 
-io ::= SHOW expr:e ENDL
-       {: RESULT = new ShowNode(e, eleft, eright); :}
-     | GET IDENT:id ENDL
-       {: RESULT = new GetNode(new VariableNode(id, idleft, idright), idleft, idright); :}
+io ::= SHOW:s expr:e ENDL
+       {: RESULT = new ShowNode(e, sleft, sright); :}
+     | GET:g IDENT:id ENDL
+       {: RESULT = new GetNode(new VariableNode(id, idleft, idright), gleft, gright); :}
      ;
 
 asign ::= IDENT:id ARROW expr:e ENDL
@@ -280,7 +280,7 @@ expr ::= IDENT:id {: RESULT = new VariableNode(id, idleft, idright); :}
        | NOT:n expr:e {: RESULT = new UnaryNode("!", e, true, nleft, nright); :}
        | LPAR expr:e RPAR {: RESULT = e; :}
        | llamada:ll {: RESULT = ll; :}
-       | LBRACE lista_expr:l RBRACE {: RESULT = new ArrayLiteralNode(l, lleft, lright); :}
+       | LBRACE lista_init:l RBRACE {: RESULT = new ArrayLiteralNode(l, lleft, lright); :}
        ;
 
 llamada ::= IDENT:id LPAR RPAR
@@ -292,6 +292,14 @@ llamada ::= IDENT:id LPAR RPAR
 lista_expr ::= expr:e
                 {: List<ASTNode> l = new ArrayList<ASTNode>(); l.add(e); RESULT = l; :}
               | lista_expr:l COMMA expr:e
+                {: l.add(e); RESULT = l; :}
+              ;
+
+lista_init ::= expr:e
+                {: List<ASTNode> l = new ArrayList<ASTNode>(); l.add(e); RESULT = l; :}
+              | lista_init:l COMMA expr:e
+                {: l.add(e); RESULT = l; :}
+              | lista_init:l expr:e
                 {: l.add(e); RESULT = l; :}
               ;
 

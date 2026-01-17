@@ -22,6 +22,6 @@ public class SymbolInfo {
     @Override
     public String toString() {
         String d = dims.isEmpty() ? "" : (" dims=" + dims);
-        return kind + " " + name + " : " + type + " (line=" + line + ", col=" + col + ")" + d;
+        return kind + " " + name + " : " + type + " (line=" + (line + 1) + ", col=" + (col + 1) + ")" + d;
     }
 }

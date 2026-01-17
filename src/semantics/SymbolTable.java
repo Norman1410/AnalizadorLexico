@@ -34,15 +34,16 @@ public class SymbolTable {
         }
     }
 
-
     public String currentScope() {
         return scopeNames.isEmpty() ? "global" : scopeNames.peek();
     }
 
     public void declare(SymbolInfo info) {
-        if (info == null || info.name == null) return;
+        if (info == null || info.name == null)
+            return;
 
-        if (scopes.isEmpty()) enterScope("global");
+        if (scopes.isEmpty())
+            enterScope("global");
         Map<String, SymbolInfo> current = scopes.peek();
 
         if (current.containsKey(info.name)) {
@@ -58,9 +59,11 @@ public class SymbolTable {
 
     /** Busca de adentro hacia afuera */
     public SymbolInfo lookup(String name) {
-        if (name == null) return null;
+        if (name == null)
+            return null;
         for (Map<String, SymbolInfo> s : scopes) {
-            if (s.containsKey(name)) return s.get(name);
+            if (s.containsKey(name))
+                return s.get(name);
         }
         return null;
     }
@@ -94,7 +97,6 @@ public class SymbolTable {
         return out;
     }
 
-
     public List<String> getErrors() {
         return errors;
     }
@@ -109,7 +111,8 @@ public class SymbolTable {
 
         if (!errors.isEmpty()) {
             sb.append("\n=== ERRORES SEMÁNTICOS ===\n");
-            for (String er : errors) sb.append(er).append("\n");
+            for (String er : errors)
+                sb.append(er).append("\n");
         }
         return sb.toString();
     }
@@ -129,9 +132,9 @@ public class SymbolTable {
                         .append(" : ")
                         .append(si.type)
                         .append(" (line=")
-                        .append(si.line)
+                        .append(si.line + 1)
                         .append(", col=")
-                        .append(si.col)
+                        .append(si.col + 1)
                         .append(")");
 
                 if (si.dims != null && !si.dims.isEmpty()) {
@@ -159,9 +162,9 @@ public class SymbolTable {
                         .append(" : ")
                         .append(si.type)
                         .append(" (line=")
-                        .append(si.line)
+                        .append(si.line + 1)
                         .append(", col=")
-                        .append(si.col)
+                        .append(si.col + 1)
                         .append(")");
 
                 if (si.dims != null && !si.dims.isEmpty()) {
@@ -172,9 +175,13 @@ public class SymbolTable {
             }
         }
 
+        if (!errors.isEmpty()) {
+            sb.append("\n=== ERRORES SEMÁNTICOS ===\n");
+            for (String er : errors)
+                sb.append(er).append("\n");
+        }
+
         return sb.toString();
     }
-
-
 
 }
