@@ -6,12 +6,13 @@ import java.util.*;
 
 public class Main {
     public static void main(String[] args) {
+        String rutaEntrada;
         if (args.length < 1) {
-            System.out.println("Uso: java Main <ruta_del_archivo>");
-            return;
+            rutaEntrada = "src/test.txt";
+            System.out.println("No se especificó archivo de entrada. Usando por defecto: " + rutaEntrada);
+        } else {
+            rutaEntrada = args[0];
         }
-
-        String rutaEntrada = args[0];
         String rutaSalida = "tokens_salida.txt";
 
         try {
