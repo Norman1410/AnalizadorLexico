@@ -31,7 +31,7 @@ LETTER     = [A-Za-z_]
 IDENT      = {LETTER}({LETTER}|{DIGIT})*
 INT        = {DIGIT}+
 FLOAT      = {DIGIT}+ "." {DIGIT}+
-ESC        = \\[nrt\\\"']
+ESC        = \\[nrt\\\"'] | \\u[0-9A-Fa-f]{4}
 CHAR       = \'([^\\'\r\n]|{ESC})\'
 STRING     = \"([^\\\"\r\n]|{ESC})*\"
 
