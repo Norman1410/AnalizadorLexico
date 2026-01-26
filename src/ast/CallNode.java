@@ -34,4 +34,7 @@ public class CallNode extends ASTNode {
                 arg.print(indent + 1);
         }
     }
+    public String getName() { return identifier; }
+    public List<ASTNode> getArguments() { return arguments; }
+
 }

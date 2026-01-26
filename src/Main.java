@@ -57,6 +57,7 @@ public class Main {
 
                     // Tabla de símbolos
                     SymbolTable symtab = program.buildSymbolTable();
+                    program.validateArraySemantics(symtab);
                     System.out.println("\nTABLA DE SÍMBOLOS");
                     System.out.println(symtab.toPrettyStringByScope());
 

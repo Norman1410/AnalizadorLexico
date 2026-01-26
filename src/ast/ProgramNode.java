@@ -195,4 +195,112 @@ public class ProgramNode extends ASTNode {
         }
     }
 
+    public void validateArraySemantics(SymbolTable st) {
+        if (st == null) return;
+
+        // Recorremos TODO el árbol (declaraciones, funciones, main)
+        walk(this, st, new IdentityHashMap<>());
+    }
+
+    private void walk(Object obj, SymbolTable st, IdentityHashMap<Object, Boolean> seen) {
+        if (obj == null) return;
+        if (seen.put(obj, Boolean.TRUE) != null) return;
+
+        // Reglas específicas
+        if (obj instanceof AssignNode an) {
+            checkAssign(an, st);
+        } else if (obj instanceof CallNode cn) {
+            checkCall(cn, st);
+        }
+
+        // Recorremos hijos por reflexión (ASTNodes y listas)
+        try {
+            Class<?> c = obj.getClass();
+            while (c != null) {
+                for (var f : c.getDeclaredFields()) {
+                    f.setAccessible(true);
+                    Object v = f.get(obj);
+
+                    if (v instanceof ASTNode) {
+                        walk(v, st, seen);
+                    } else if (v instanceof List<?> list) {
+                        for (Object it : list) {
+                            if (it instanceof ASTNode) walk(it, st, seen);
+                        }
+                    }
+                }
+                c = c.getSuperclass();
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void checkAssign(AssignNode an, SymbolTable st) {
+
+        // Caso: "reemplazar arreglo" (asignar a un arreglo completo algo que NO es arreglo)
+        ASTNode target = an.getTarget();
+        ASTNode rhs    = an.getExpression();
+
+        // Solo nos importa cuando el target es una VARIABLE COMPLETA: arr = ...
+        if (target instanceof VariableNode) {
+
+            VariableNode vn = (VariableNode) target;
+            SymbolInfo si = st.lookup(vn.getName());
+
+            // Si la variable destino es un arreglo
+            if (si != null && si.dims != null && !si.dims.isEmpty()) {
+
+                boolean rhsEsArreglo = false;
+
+                // 1) Literal de arreglo: { ... }
+                if (rhs instanceof ArrayLiteralNode) {
+                    rhsEsArreglo = true;
+                }
+                // 2) Variable que también sea arreglo: arr2
+                else if (rhs instanceof VariableNode) {
+                    VariableNode rv = (VariableNode) rhs;
+                    SymbolInfo rsi = st.lookup(rv.getName());
+
+                    if (rsi != null && rsi.dims != null && !rsi.dims.isEmpty()) {
+                        rhsEsArreglo = true;
+                    }
+                }
+
+                // Si NO es arreglo, error semántico
+                if (!rhsEsArreglo) {
+                    st.addError(
+                            "Asignación inválida: no se puede asignar un valor escalar al arreglo '" +
+                                    vn.getName() +
+                                    "' (línea=" + (an.getLine() + 1) +
+                                    ", columna=" + (an.getColumn() + 1) + ")"
+                    );
+                }
+            }
+        }
+    }
+
+
+    private void checkCall(CallNode cn, SymbolTable st) {
+        // Caso: "error por permitirlo como argumento"
+        // - prohibir { ... } como argumento
+        // - prohibir pasar una VARIABLE que sea arreglo como argumento (arr)
+        var args = cn.getArguments();
+        if (args == null) return;
+
+        for (ASTNode a : args) {
+            if (a instanceof ArrayLiteralNode) {
+                st.addError("Argumento inválido: no se permite pasar un literal de arreglo como argumento en '" +
+                        cn.getName() + "' (line=" + (cn.getLine()+1) + ", col=" + (cn.getColumn()+1) + ")");
+            }
+            if (a instanceof VariableNode vn) {
+                var si = st.lookup(vn.getName());
+                if (si != null && si.dims != null && !si.dims.isEmpty()) {
+                    st.addError("Argumento inválido: no se permite pasar el arreglo completo '" + vn.getName() +
+                            "' como argumento en '" + cn.getName() + "' (line=" + (cn.getLine()+1) + ", col=" + (cn.getColumn()+1) + ")");
+                }
+            }
+            // ArrayAccessNode (a[i]) sí se permite, porque es un elemento
+        }
+    }
+
+
 }

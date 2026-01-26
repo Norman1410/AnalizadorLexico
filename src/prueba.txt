@@ -1,7 +1,7 @@
-world int x endl
+world int ii endl
 
-navidad ¿ ? ¡
-  local int y endl
-  x = = 5 endl      | error sintáctico
-  show y endl
+navidad¿ ?¡
+    local int y = a[0][0] + 3 * a[1][1] endl
+    local int z = -a[0][1] + --a[1][0] endl
+    local boolean b = a[0][0] > a[1][1] endl
 !

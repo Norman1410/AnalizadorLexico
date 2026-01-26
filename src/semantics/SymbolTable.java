@@ -101,6 +101,10 @@ public class SymbolTable {
         return errors;
     }
 
+    public void addError(String msg) {
+        if (msg != null) errors.add(msg);
+    }
+
     public String toPrettyString() {
         StringBuilder sb = new StringBuilder();
         sb.append("=== TABLA DE SÍMBOLOS ===\n");

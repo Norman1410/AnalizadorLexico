@@ -77,6 +77,9 @@ non terminal CallNode llamada;
 non terminal List<ASTNode> lista_expr, lista_init;
 non terminal String tipo;
 non terminal ParamNode param;
+non terminal ASTNode lvalue;
+non terminal ASTNode expr_arg;
+non terminal ASTNode init_elem;
 
 /*  Precedencia y Asociatividad  */
 precedence left OR;
@@ -193,13 +196,15 @@ decl ::= LOCAL tipo:t IDENT:id ENDL
             dims.add(Integer.parseInt(sz2.toString()));
             RESULT = new DeclNode(id, null, false, t, dims, idleft, idright); 
          :}
-       | LOCAL tipo:t IDENT:id LBRACKET INT_LIT:sz1 RBRACKET LBRACKET INT_LIT:sz2 RBRACKET ASSIGN expr:e ENDL
-         {: 
-            List<Integer> dims = new ArrayList<>(); 
-            dims.add(Integer.parseInt(sz1.toString())); 
+       | LOCAL tipo:t IDENT:id LBRACKET INT_LIT:sz1 RBRACKET LBRACKET INT_LIT:sz2 RBRACKET ASSIGN LBRACE lista_init:l RBRACE ENDL
+         {:
+            List<Integer> dims = new ArrayList<>();
+            dims.add(Integer.parseInt(sz1.toString()));
             dims.add(Integer.parseInt(sz2.toString()));
-            RESULT = new DeclNode(id, e, false, t, dims, idleft, idright); 
+            RESULT = new DeclNode(id, new ArrayLiteralNode(l, lleft, lright), false, t, dims, idleft, idright);
          :}
+
+
        /* Para for */
        | tipo:t IDENT:id ASSIGN expr:e
          {: RESULT = new DeclNode(id, e, false, t, new ArrayList<>(), idleft, idright); :}
@@ -247,17 +252,28 @@ for_stmt ::= FOR:f LPAR decl:d ENDL expr:cond ENDL expr:step RPAR bloque:b
 
 io ::= SHOW:s expr:e ENDL
        {: RESULT = new ShowNode(e, sleft, sright); :}
-     | GET:g IDENT:id ENDL
-       {: RESULT = new GetNode(new VariableNode(id, idleft, idright), gleft, gright); :}
+     | GET:g lvalue:lv ENDL
+       {: RESULT = new GetNode(lv, gleft, gright); :}
      ;
 
-asign ::= IDENT:id ARROW expr:e ENDL
-            {: RESULT = new AssignNode(new VariableNode(id, idleft, idright), e, idleft, idright); :}
-          | IDENT:id ASSIGN expr:e ENDL
-            {: RESULT = new AssignNode(new VariableNode(id, idleft, idright), e, idleft, idright); :}
-          ;
+lvalue ::= IDENT:id
+           {: RESULT = new VariableNode(id, idleft, idright); :}
+         | IDENT:id LBRACKET expr:i1 RBRACKET
+           {:
+              List<ASTNode> idx = new ArrayList<>();
+              idx.add(i1);
+              RESULT = new ArrayAccessNode(new VariableNode(id, idleft, idright), idx, idleft, idright);
+           :}
+         | IDENT:id LBRACKET expr:i1 RBRACKET LBRACKET expr:i2 RBRACKET
+           {:
+              List<ASTNode> idx = new ArrayList<>();
+              idx.add(i1); idx.add(i2);
+              RESULT = new ArrayAccessNode(new VariableNode(id, idleft, idright), idx, idleft, idright);
+           :}
+         ;
 
-expr ::= IDENT:id {: RESULT = new VariableNode(id, idleft, idright); :}
+
+expr ::= lvalue:lv {: RESULT = lv; :}
        | literal:l {: RESULT = l; :}
        | expr:e1 PLUS  expr:e2 {: RESULT = new BinaryNode(e1, "+", e2, e1left, e1right); :}
        | expr:e1 MINUS expr:e2 {: RESULT = new BinaryNode(e1, "-", e2, e1left, e1right); :}
@@ -267,8 +283,8 @@ expr ::= IDENT:id {: RESULT = new VariableNode(id, idleft, idright); :}
        | expr:e1 MOD   expr:e2 {: RESULT = new BinaryNode(e1, "%", e2, e1left, e1right); :}
        | expr:e1 POW   expr:e2 {: RESULT = new BinaryNode(e1, "^", e2, e1left, e1right); :}
        | MINUS:m expr:e {: RESULT = new UnaryNode("-", e, true, mleft, mright); :} %prec UMINUS
-       | INC:i IDENT:id {: RESULT = new UnaryNode("++", new VariableNode(id, idleft, idright), true, ileft, iright); :}
-       | DEC:d IDENT:id {: RESULT = new UnaryNode("--", new VariableNode(id, idleft, idright), true, dleft, dright); :}
+       | INC:i lvalue:lv {: RESULT = new UnaryNode("++", lv, true, ileft, iright); :}
+       | DEC:d lvalue:lv {: RESULT = new UnaryNode("--", lv, true, dleft, dright); :}
        | expr:e1 LT expr:e2 {: RESULT = new BinaryNode(e1, "<", e2, e1left, e1right); :}
        | expr:e1 LE expr:e2 {: RESULT = new BinaryNode(e1, "<=", e2, e1left, e1right); :}
        | expr:e1 GT expr:e2 {: RESULT = new BinaryNode(e1, ">", e2, e1left, e1right); :}
@@ -283,25 +299,65 @@ expr ::= IDENT:id {: RESULT = new VariableNode(id, idleft, idright); :}
        | LBRACE lista_init:l RBRACE {: RESULT = new ArrayLiteralNode(l, lleft, lright); :}
        ;
 
+
+
+asign ::= lvalue:lv ARROW expr:e ENDL
+            {: RESULT = new AssignNode(lv, e, lvleft, lvright); :}
+        | lvalue:lv ASSIGN expr:e ENDL
+            {: RESULT = new AssignNode(lv, e, lvleft, lvright); :}
+        ;
+
+expr_arg ::= lvalue:lv {: RESULT = lv; :}
+          | literal:l {: RESULT = l; :}
+          | expr_arg:e1 PLUS  expr_arg:e2 {: RESULT = new BinaryNode(e1, "+", e2, e1left, e1right); :}
+          | expr_arg:e1 MINUS expr_arg:e2 {: RESULT = new BinaryNode(e1, "-", e2, e1left, e1right); :}
+          | expr_arg:e1 TIMES expr_arg:e2 {: RESULT = new BinaryNode(e1, "*", e2, e1left, e1right); :}
+          | expr_arg:e1 DIV   expr_arg:e2 {: RESULT = new BinaryNode(e1, "/", e2, e1left, e1right); :}
+          | expr_arg:e1 IDIV  expr_arg:e2 {: RESULT = new BinaryNode(e1, "//", e2, e1left, e1right); :}
+          | expr_arg:e1 MOD   expr_arg:e2 {: RESULT = new BinaryNode(e1, "%", e2, e1left, e1right); :}
+          | expr_arg:e1 POW   expr_arg:e2 {: RESULT = new BinaryNode(e1, "^", e2, e1left, e1right); :}
+          | MINUS:m expr_arg:e {: RESULT = new UnaryNode("-", e, true, mleft, mright); :} %prec UMINUS
+          | INC:i lvalue:lv {: RESULT = new UnaryNode("++", lv, true, ileft, iright); :}
+          | DEC:d lvalue:lv {: RESULT = new UnaryNode("--", lv, true, dleft, dright); :}
+          | expr_arg:e1 LT expr_arg:e2 {: RESULT = new BinaryNode(e1, "<", e2, e1left, e1right); :}
+          | expr_arg:e1 LE expr_arg:e2 {: RESULT = new BinaryNode(e1, "<=", e2, e1left, e1right); :}
+          | expr_arg:e1 GT expr_arg:e2 {: RESULT = new BinaryNode(e1, ">", e2, e1left, e1right); :}
+          | expr_arg:e1 GE expr_arg:e2 {: RESULT = new BinaryNode(e1, ">=", e2, e1left, e1right); :}
+          | expr_arg:e1 EQ expr_arg:e2 {: RESULT = new BinaryNode(e1, "==", e2, e1left, e1right); :}
+          | expr_arg:e1 NE expr_arg:e2 {: RESULT = new BinaryNode(e1, "!=", e2, e1left, e1right); :}
+          | expr_arg:e1 AND expr_arg:e2 {: RESULT = new BinaryNode(e1, "&&", e2, e1left, e1right); :}
+          | expr_arg:e1 OR  expr_arg:e2 {: RESULT = new BinaryNode(e1, "||", e2, e1left, e1right); :}
+          | NOT:n expr_arg:e {: RESULT = new UnaryNode("!", e, true, nleft, nright); :}
+          | LPAR expr_arg:e RPAR {: RESULT = e; :}
+          | llamada:ll {: RESULT = ll; :}
+          ;
+
 llamada ::= IDENT:id LPAR RPAR
             {: RESULT = new CallNode(id, new ArrayList<ASTNode>(), idleft, idright); :}
           | IDENT:id LPAR lista_expr:l RPAR
             {: RESULT = new CallNode(id, l, idleft, idright); :}
           ;
 
-lista_expr ::= expr:e
+lista_expr ::= expr_arg:e
                 {: List<ASTNode> l = new ArrayList<ASTNode>(); l.add(e); RESULT = l; :}
-              | lista_expr:l COMMA expr:e
+              | lista_expr:l COMMA expr_arg:e
                 {: l.add(e); RESULT = l; :}
               ;
 
-lista_init ::= expr:e
+
+lista_init ::= init_elem:e
                 {: List<ASTNode> l = new ArrayList<ASTNode>(); l.add(e); RESULT = l; :}
-              | lista_init:l COMMA expr:e
+             | lista_init:l COMMA init_elem:e
                 {: l.add(e); RESULT = l; :}
-              | lista_init:l expr:e
-                {: l.add(e); RESULT = l; :}
-              ;
+             ;
+
+
+init_elem ::= literal:l
+              {: RESULT = l; :}
+            | LBRACE lista_init:l RBRACE
+              {: RESULT = new ArrayLiteralNode(l, lleft, lright); :}
+            ;
+
 
 literal ::= INT_LIT:n {: RESULT = new LiteralNode(n, "int", nleft, nright); :}
           | FLOAT_LIT:f {: RESULT = new LiteralNode(f, "float", fleft, fright); :}

@@ -3,9 +3,11 @@ package ast;
 import java.util.*;
 
 public class GetNode extends ASTNode {
-    private VariableNode target;
+    private ASTNode target;
 
-    public GetNode(VariableNode target, int line, int column) {
+
+    public GetNode(ASTNode target, int line, int column)
+    {
         super(line, column);
         this.target = target;
     }

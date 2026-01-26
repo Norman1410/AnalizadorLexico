@@ -3,10 +3,11 @@ package ast;
 import java.util.*;
 
 public class AssignNode extends ASTNode {
-    private VariableNode target;
+    private ASTNode target;;
     private ASTNode expression;
 
-    public AssignNode(VariableNode target, ASTNode expression, int line, int column) {
+    public AssignNode(ASTNode target, ASTNode expression, int line, int column)
+    {
         super(line, column);
         this.target = target;
         this.expression = expression;
@@ -31,4 +32,8 @@ public class AssignNode extends ASTNode {
         if (expression != null)
             expression.print(indent + 1);
     }
+
+    public ASTNode getTarget() { return target; }
+    public ASTNode getExpression() { return expression; }
+
 }
