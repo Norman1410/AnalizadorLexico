@@ -33,4 +33,13 @@ public class ArrayLiteralNode extends ASTNode {
             }
         }
     }
+
+    @Override
+    public void validate(semantics.SymbolTable st) {
+    }
+
+    @Override
+    public String getType(semantics.SymbolTable st) {
+        return "unknown";
+    }
 }

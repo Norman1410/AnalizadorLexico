@@ -26,4 +26,18 @@ public class VariableNode extends ASTNode {
         printIndent(indent);
         System.out.println("Variable: " + identifier);
     }
+
+    @Override
+    public void validate(semantics.SymbolTable st) {
+        if (st.lookup(identifier) == null) {
+            st.addError("Error semántico: Variable '" + identifier + "' no declarada (línea=" + (line + 1) + ", col="
+                    + (column + 1) + ")");
+        }
+    }
+
+    @Override
+    public String getType(semantics.SymbolTable st) {
+        semantics.SymbolInfo si = st.lookup(identifier);
+        return (si != null) ? si.type : "unknown";
+    }
 }

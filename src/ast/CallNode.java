@@ -34,7 +34,21 @@ public class CallNode extends ASTNode {
                 arg.print(indent + 1);
         }
     }
-    public String getName() { return identifier; }
-    public List<ASTNode> getArguments() { return arguments; }
 
+    @Override
+    public void validate(semantics.SymbolTable st) {
+    }
+
+    @Override
+    public String getType(semantics.SymbolTable st) {
+        return "unknown";
+    }
+
+    public String getName() {
+        return identifier;
+    }
+
+    public List<ASTNode> getArguments() {
+        return arguments;
+    }
 }

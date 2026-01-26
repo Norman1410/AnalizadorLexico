@@ -1,7 +1,6 @@
 package ast;
 
 import java.util.*;
-import semantics.*;
 
 public class ProgramNode extends ASTNode {
     private List<ASTNode> declarations;
@@ -57,259 +56,30 @@ public class ProgramNode extends ASTNode {
         }
     }
 
-    public SymbolTable buildSymbolTable() {
-        SymbolTable st = new SymbolTable();
-
+    @Override
+    public void validate(semantics.SymbolTable st) {
         if (declarations != null) {
-            for (ASTNode n : declarations) {
-                if (n instanceof DeclNode d) {
-                    st.declare(new SymbolInfo(
-                            d.getName(),
-                            d.getTypeName(),
-                            SymbolKind.GLOBAL_VAR,
-                            d.getLine(),
-                            d.getColumn(),
-                            d.getDims()));
-                }
-            }
+            for (ASTNode d : declarations)
+                d.validate(st);
         }
-
         if (functions != null) {
-            for (ASTNode fn : functions) {
-                if (fn instanceof FunctionNode f) {
-
-                    st.declare(new SymbolInfo(
-                            f.getName(),
-                            f.getReturnType(),
-                            SymbolKind.FUNCTION,
-                            f.getLine(),
-                            f.getColumn(),
-                            Collections.emptyList()));
-                    st.enterScope(f.getName());
-                    st.declare(new SymbolInfo(
-                            "tipo",
-                            "function:" + f.getReturnType(),
-                            SymbolKind.META,
-                            f.getLine(),
-                            f.getColumn(),
-                            Collections.emptyList()));
-
-                    for (ParamNode p : f.getParams()) {
-                        st.declare(new SymbolInfo(
-                                p.getName(),
-                                p.getType(),
-                                SymbolKind.PARAM,
-                                p.getLine(),
-                                p.getColumn(),
-                                Collections.emptyList()));
-                    }
-
-                    BlockNode fb = f.getBlock();
-                    if (fb != null) {
-                        collectLocalsFromBlock(fb, st);
-                    }
-
-                    st.exitScope();
-                }
-            }
+            for (ASTNode f : functions)
+                f.validate(st);
         }
-
-        st.enterScope("main");
-        int ml = 0, mc = 0;
-        if (mainBlock instanceof MainNode mn2) {
-            ml = mn2.getLine();
-            mc = mn2.getColumn();
-        }
-        st.declare(new SymbolInfo(
-                "tipo",
-                "main:void",
-                SymbolKind.META,
-                ml,
-                mc,
-                Collections.emptyList()));
-
-        if (mainBlock instanceof MainNode mn) {
-            collectLocalsFromBlock(mn.getBlock(), st);
-        }
-        st.exitScope();
-        return st;
-    }
-
-    private void collectLocalsFromBlock(BlockNode b, SymbolTable st) {
-
-        // ABRIR scope para ESTE bloque
-        st.enterScope("block@" + b.getLine() + ":" + b.getColumn());
-
-        for (ASTNode stmt : b.getStatements()) {
-
-            // Declaraciones locales
-            if (stmt instanceof DeclNode d) {
-                st.declare(new SymbolInfo(
-                        d.getName(),
-                        d.getTypeName(),
-                        SymbolKind.LOCAL_VAR,
-                        d.getLine(),
-                        d.getColumn(),
-                        d.getDims()
-                ));
-            }
-
-            // Bloque anidado
-            else if (stmt instanceof BlockNode bb) {
-                collectLocalsFromBlock(bb, st);
-            }
-
-            // Decide
-            else if (stmt instanceof DecideNode dn) {
-                for (ASTNode c : dn.getCases()) {
-                    if (c instanceof CaseNode cn) {
-                        collectLocalsFromBlock(cn.getBlock(), st);
-                    }
-                }
-                if (dn.getElseBlock() != null) {
-                    collectLocalsFromBlock(dn.getElseBlock(), st);
-                }
-            }
-
-            // Loop
-            else if (stmt instanceof LoopNode ln) {
-                collectLocalsFromBlock(ln.getBody(), st);
-            }
-
-            // For
-            else if (stmt instanceof ForNode fn) {
-
-                // Scope propio del for (por el init)
-                st.enterScope("for@" + fn.getLine() + ":" + fn.getColumn());
-
-                if (fn.getInit() instanceof DeclNode d) {
-                    st.declare(new SymbolInfo(
-                            d.getName(),
-                            d.getTypeName(),
-                            SymbolKind.LOCAL_VAR,
-                            d.getLine(),
-                            d.getColumn(),
-                            d.getDims()
-                    ));
-                }
-
-                collectLocalsFromBlock(fn.getBody(), st);
-
-                st.exitScope();
-            }
-        }
-
-        //  CERRAR scope del bloque
-        st.exitScope();
-    }
-
-
-    public void validateArraySemantics(SymbolTable st) {
-        if (st == null) return;
-
-        // Recorremos TODO el árbol (declaraciones, funciones, main)
-        walk(this, st, new IdentityHashMap<>());
-    }
-
-    private void walk(Object obj, SymbolTable st, IdentityHashMap<Object, Boolean> seen) {
-        if (obj == null) return;
-        if (seen.put(obj, Boolean.TRUE) != null) return;
-
-        // Reglas específicas
-        if (obj instanceof AssignNode an) {
-            checkAssign(an, st);
-        } else if (obj instanceof CallNode cn) {
-            checkCall(cn, st);
-        }
-
-        // Recorremos hijos por reflexión (ASTNodes y listas)
-        try {
-            Class<?> c = obj.getClass();
-            while (c != null) {
-                for (var f : c.getDeclaredFields()) {
-                    f.setAccessible(true);
-                    Object v = f.get(obj);
-
-                    if (v instanceof ASTNode) {
-                        walk(v, st, seen);
-                    } else if (v instanceof List<?> list) {
-                        for (Object it : list) {
-                            if (it instanceof ASTNode) walk(it, st, seen);
-                        }
-                    }
-                }
-                c = c.getSuperclass();
-            }
-        } catch (Exception ignored) {}
-    }
-
-    private void checkAssign(AssignNode an, SymbolTable st) {
-
-        // Caso: "reemplazar arreglo" (asignar a un arreglo completo algo que NO es arreglo)
-        ASTNode target = an.getTarget();
-        ASTNode rhs    = an.getExpression();
-
-        // Solo nos importa cuando el target es una VARIABLE COMPLETA: arr = ...
-        if (target instanceof VariableNode) {
-
-            VariableNode vn = (VariableNode) target;
-            SymbolInfo si = st.lookup(vn.getName());
-
-            // Si la variable destino es un arreglo
-            if (si != null && si.dims != null && !si.dims.isEmpty()) {
-
-                boolean rhsEsArreglo = false;
-
-                // 1) Literal de arreglo: { ... }
-                if (rhs instanceof ArrayLiteralNode) {
-                    rhsEsArreglo = true;
-                }
-                // 2) Variable que también sea arreglo: arr2
-                else if (rhs instanceof VariableNode) {
-                    VariableNode rv = (VariableNode) rhs;
-                    SymbolInfo rsi = st.lookup(rv.getName());
-
-                    if (rsi != null && rsi.dims != null && !rsi.dims.isEmpty()) {
-                        rhsEsArreglo = true;
-                    }
-                }
-
-                // Si NO es arreglo, error semántico
-                if (!rhsEsArreglo) {
-                    st.addError(
-                            "Asignación inválida: no se puede asignar un valor escalar al arreglo '" +
-                                    vn.getName() +
-                                    "' (línea=" + (an.getLine() + 1) +
-                                    ", columna=" + (an.getColumn() + 1) + ")"
-                    );
-                }
-            }
+        if (mainBlock != null) {
+            mainBlock.validate(st);
         }
     }
 
-
-    private void checkCall(CallNode cn, SymbolTable st) {
-        // Caso: "error por permitirlo como argumento"
-        // - prohibir { ... } como argumento
-        // - prohibir pasar una VARIABLE que sea arreglo como argumento (arr)
-        var args = cn.getArguments();
-        if (args == null) return;
-
-        for (ASTNode a : args) {
-            if (a instanceof ArrayLiteralNode) {
-                st.addError("Argumento inválido: no se permite pasar un literal de arreglo como argumento en '" +
-                        cn.getName() + "' (line=" + (cn.getLine()+1) + ", col=" + (cn.getColumn()+1) + ")");
-            }
-            if (a instanceof VariableNode vn) {
-                var si = st.lookup(vn.getName());
-                if (si != null && si.dims != null && !si.dims.isEmpty()) {
-                    st.addError("Argumento inválido: no se permite pasar el arreglo completo '" + vn.getName() +
-                            "' como argumento en '" + cn.getName() + "' (line=" + (cn.getLine()+1) + ", col=" + (cn.getColumn()+1) + ")");
-                }
-            }
-            // ArrayAccessNode (a[i]) sí se permite, porque es un elemento
-        }
+    @Override
+    public String getType(semantics.SymbolTable st) {
+        return "void";
     }
 
+    public semantics.SymbolTable buildSymbolTable() {
+        return new semantics.SymbolTable();
+    }
 
+    public void validateArraySemantics(semantics.SymbolTable st) {
+    }
 }

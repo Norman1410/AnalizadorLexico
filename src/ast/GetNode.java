@@ -5,9 +5,7 @@ import java.util.*;
 public class GetNode extends ASTNode {
     private ASTNode target;
 
-
-    public GetNode(ASTNode target, int line, int column)
-    {
+    public GetNode(ASTNode target, int line, int column) {
         super(line, column);
         this.target = target;
     }
@@ -24,5 +22,14 @@ public class GetNode extends ASTNode {
         printIndent(indent);
         System.out.println("Get:");
         target.print(indent + 1);
+    }
+
+    @Override
+    public void validate(semantics.SymbolTable st) {
+    }
+
+    @Override
+    public String getType(semantics.SymbolTable st) {
+        return "void";
     }
 }

@@ -12,9 +12,13 @@ public class ParamNode extends ASTNode {
         this.type = type;
     }
 
-    public String getName() { return name; }
+    public String getName() {
+        return name;
+    }
 
-    public String getType() { return type; }
+    public String getType() {
+        return type;
+    }
 
     @Override
     public Map<String, Object> toJsonObject() {
@@ -28,5 +32,14 @@ public class ParamNode extends ASTNode {
     public void print(int indent) {
         printIndent(indent);
         System.out.println("Parameter: " + name + " (" + type + ")");
+    }
+
+    @Override
+    public void validate(semantics.SymbolTable st) {
+    }
+
+    @Override
+    public String getType(semantics.SymbolTable st) {
+        return type;
     }
 }

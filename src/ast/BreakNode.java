@@ -17,4 +17,13 @@ public class BreakNode extends ASTNode {
         printIndent(indent);
         System.out.println("Break");
     }
+
+    @Override
+    public void validate(semantics.SymbolTable st) {
+    }
+
+    @Override
+    public String getType(semantics.SymbolTable st) {
+        return "void";
+    }
 }

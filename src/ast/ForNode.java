@@ -52,6 +52,16 @@ public class ForNode extends ASTNode {
         if (block != null)
             block.print(indent + 1);
     }
+
+    @Override
+    public void validate(semantics.SymbolTable st) {
+    }
+
+    @Override
+    public String getType(semantics.SymbolTable st) {
+        return "void";
+    }
+
     public BlockNode getBody() {
         return (block instanceof BlockNode) ? (BlockNode) block : null;
     }
@@ -59,6 +69,4 @@ public class ForNode extends ASTNode {
     public ASTNode getInit() {
         return init;
     }
-
-
 }

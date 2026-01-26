@@ -32,7 +32,6 @@ public class DecideNode extends ASTNode {
 
     @Override
     public void print(int indent) {
-        // ...
         printIndent(indent);
         System.out.println("Decide");
         if (expression != null) {
@@ -50,17 +49,28 @@ public class DecideNode extends ASTNode {
             elseBlock.print(indent + 2);
         }
     }
+
+    @Override
+    public void validate(semantics.SymbolTable st) {
+    }
+
+    @Override
+    public String getType(semantics.SymbolTable st) {
+        return "void";
+    }
+
     public List<CaseNode> getCases() {
-        if (cases == null) return Collections.emptyList();
+        if (cases == null)
+            return Collections.emptyList();
         List<CaseNode> out = new ArrayList<>();
         for (ASTNode n : cases) {
-            if (n instanceof CaseNode cn) out.add(cn);
+            if (n instanceof CaseNode)
+                out.add((CaseNode) n);
         }
         return out;
     }
 
-    public BlockNode getElseBlock() {
-        return (elseBlock instanceof BlockNode) ? (BlockNode) elseBlock : null;
+    public ASTNode getElseBlock() {
+        return elseBlock;
     }
-
 }

@@ -31,8 +31,17 @@ public class CaseNode extends ASTNode {
         if (block != null)
             block.print(indent + 1);
     }
+
+    @Override
+    public void validate(semantics.SymbolTable st) {
+    }
+
+    @Override
+    public String getType(semantics.SymbolTable st) {
+        return "void";
+    }
+
     public BlockNode getBlock() {
         return (block instanceof BlockNode) ? (BlockNode) block : null;
     }
-
 }

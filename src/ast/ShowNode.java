@@ -25,4 +25,13 @@ public class ShowNode extends ASTNode {
         if (expression != null)
             expression.print(indent + 1);
     }
+
+    @Override
+    public void validate(semantics.SymbolTable st) {
+    }
+
+    @Override
+    public String getType(semantics.SymbolTable st) {
+        return "void";
+    }
 }

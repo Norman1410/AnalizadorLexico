@@ -37,4 +37,14 @@ public class LiteralNode extends ASTNode {
         printIndent(indent);
         System.out.println("Literal (" + type + "): " + value);
     }
+
+    @Override
+    public void validate(semantics.SymbolTable st) {
+
+    }
+
+    @Override
+    public String getType(semantics.SymbolTable st) {
+        return type;
+    }
 }

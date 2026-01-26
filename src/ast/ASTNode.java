@@ -22,15 +22,16 @@ public abstract class ASTNode {
         return column;
     }
 
-    /**
-     * Método para imprimir el nodo de forma jerárquica con indentación.
-     */
     public abstract void print(int indent);
 
     /**
      * Convierte el nodo a una estructura de Map para exportación JSON.
      */
     public abstract Map<String, Object> toJsonObject();
+
+    public abstract void validate(semantics.SymbolTable st);
+
+    public abstract String getType(semantics.SymbolTable st);
 
     /**
      * Utilidad para crear el Map base de un nodo JSON.
@@ -43,9 +44,6 @@ public abstract class ASTNode {
         return node;
     }
 
-    /**
-     * Utilidad para imprimir espacios de indentación.
-     */
     protected void printIndent(int indent) {
         for (int i = 0; i < indent; i++) {
             System.out.print("  ");

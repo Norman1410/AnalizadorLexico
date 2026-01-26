@@ -6,8 +6,7 @@ public class AssignNode extends ASTNode {
     private ASTNode target;;
     private ASTNode expression;
 
-    public AssignNode(ASTNode target, ASTNode expression, int line, int column)
-    {
+    public AssignNode(ASTNode target, ASTNode expression, int line, int column) {
         super(line, column);
         this.target = target;
         this.expression = expression;
@@ -33,7 +32,20 @@ public class AssignNode extends ASTNode {
             expression.print(indent + 1);
     }
 
-    public ASTNode getTarget() { return target; }
-    public ASTNode getExpression() { return expression; }
+    @Override
+    public void validate(semantics.SymbolTable st) {
+    }
 
+    @Override
+    public String getType(semantics.SymbolTable st) {
+        return "void";
+    }
+
+    public ASTNode getTarget() {
+        return target;
+    }
+
+    public ASTNode getExpression() {
+        return expression;
+    }
 }

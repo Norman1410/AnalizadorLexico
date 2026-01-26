@@ -34,4 +34,13 @@ public class BinaryNode extends ASTNode {
         if (right != null)
             right.print(indent + 1);
     }
+
+    @Override
+    public void validate(semantics.SymbolTable st) {
+    }
+
+    @Override
+    public String getType(semantics.SymbolTable st) {
+        return "unknown";
+    }
 }

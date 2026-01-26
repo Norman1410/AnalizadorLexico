@@ -28,7 +28,12 @@ public class ExitWhenNode extends ASTNode {
         }
     }
 
-    public ASTNode getCondition() {
-        return condition;
+    @Override
+    public void validate(semantics.SymbolTable st) {
+    }
+
+    @Override
+    public String getType(semantics.SymbolTable st) {
+        return "void";
     }
 }

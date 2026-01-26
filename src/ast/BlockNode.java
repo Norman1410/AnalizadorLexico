@@ -36,8 +36,16 @@ public class BlockNode extends ASTNode {
         }
     }
 
+    @Override
+    public void validate(semantics.SymbolTable st) {
+    }
+
+    @Override
+    public String getType(semantics.SymbolTable st) {
+        return "void";
+    }
+
     public List<ASTNode> getStatements() {
         return statements;
     }
-
 }

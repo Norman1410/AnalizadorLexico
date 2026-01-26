@@ -50,20 +50,17 @@ public class FunctionNode extends ASTNode {
         if (block != null)
             block.print(indent + 1);
     }
-    public String getName() {
-        return name;
+
+    @Override
+    public void validate(semantics.SymbolTable st) {
     }
 
-    public String getReturnType() {
+    @Override
+    public String getType(semantics.SymbolTable st) {
         return returnType;
     }
 
-    public List<ParamNode> getParams() {
-        return (parameters == null) ? Collections.emptyList() : parameters;
-    }
-
-
-    public BlockNode getBlock() {
-        return (block instanceof BlockNode) ? (BlockNode) block : null;
+    public String getName() {
+        return name;
     }
 }

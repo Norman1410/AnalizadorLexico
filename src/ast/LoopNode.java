@@ -34,8 +34,17 @@ public class LoopNode extends ASTNode {
             exitCondition.print(indent + 2);
         }
     }
+
+    @Override
+    public void validate(semantics.SymbolTable st) {
+    }
+
+    @Override
+    public String getType(semantics.SymbolTable st) {
+        return "void";
+    }
+
     public BlockNode getBody() {
         return (block instanceof BlockNode) ? (BlockNode) block : null;
     }
-
 }
