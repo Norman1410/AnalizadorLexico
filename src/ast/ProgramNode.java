@@ -136,64 +136,73 @@ public class ProgramNode extends ASTNode {
     }
 
     private void collectLocalsFromBlock(BlockNode b, SymbolTable st) {
-        if (b == null)
-            return;
-        List<ASTNode> stmts = b.getStatements();
-        if (stmts == null)
-            return;
 
-        for (ASTNode s : stmts) {
-            if (s instanceof DeclNode d && !d.isGlobal()) {
+        // ABRIR scope para ESTE bloque
+        st.enterScope("block@" + b.getLine() + ":" + b.getColumn());
+
+        for (ASTNode stmt : b.getStatements()) {
+
+            // Declaraciones locales
+            if (stmt instanceof DeclNode d) {
                 st.declare(new SymbolInfo(
                         d.getName(),
                         d.getTypeName(),
                         SymbolKind.LOCAL_VAR,
                         d.getLine(),
                         d.getColumn(),
-                        d.getDims()));
+                        d.getDims()
+                ));
             }
 
-            if (s instanceof BlockNode bb) {
+            // Bloque anidado
+            else if (stmt instanceof BlockNode bb) {
                 collectLocalsFromBlock(bb, st);
-                continue;
             }
 
-            if (s instanceof LoopNode ln) {
-                BlockNode body = ln.getBody();
-                if (body != null)
-                    collectLocalsFromBlock(body, st);
-                continue;
-            }
-
-            if (s instanceof ForNode fn) {
-
-                ASTNode init = fn.getInit();
-                if (init instanceof DeclNode d2) {
-                    st.declare(new SymbolInfo(
-                            d2.getName(),
-                            d2.getTypeName(),
-                            SymbolKind.LOCAL_VAR,
-                            d2.getLine(),
-                            d2.getColumn(),
-                            d2.getDims()));
-                }
-
-                BlockNode body = fn.getBody();
-                if (body != null)
-                    collectLocalsFromBlock(body, st);
-                continue;
-            }
-
-            if (s instanceof DecideNode dn) {
-                for (CaseNode cn : dn.getCases()) {
-                    if (cn.getBlock() != null)
+            // Decide
+            else if (stmt instanceof DecideNode dn) {
+                for (ASTNode c : dn.getCases()) {
+                    if (c instanceof CaseNode cn) {
                         collectLocalsFromBlock(cn.getBlock(), st);
+                    }
                 }
-                if (dn.getElseBlock() != null)
+                if (dn.getElseBlock() != null) {
                     collectLocalsFromBlock(dn.getElseBlock(), st);
+                }
+            }
+
+            // Loop
+            else if (stmt instanceof LoopNode ln) {
+                collectLocalsFromBlock(ln.getBody(), st);
+            }
+
+            // For
+            else if (stmt instanceof ForNode fn) {
+
+                // Scope propio del for (por el init)
+                st.enterScope("for@" + fn.getLine() + ":" + fn.getColumn());
+
+                if (fn.getInit() instanceof DeclNode d) {
+                    st.declare(new SymbolInfo(
+                            d.getName(),
+                            d.getTypeName(),
+                            SymbolKind.LOCAL_VAR,
+                            d.getLine(),
+                            d.getColumn(),
+                            d.getDims()
+                    ));
+                }
+
+                collectLocalsFromBlock(fn.getBody(), st);
+
+                st.exitScope();
             }
         }
+
+        //  CERRAR scope del bloque
+        st.exitScope();
     }
+
 
     public void validateArraySemantics(SymbolTable st) {
         if (st == null) return;

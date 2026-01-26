@@ -1,7 +1,59 @@
-world int ii endl
+world int g endl
+world boolean flag endl
 
-navidad¿ ?¡
-    local int y = a[0][0] + 3 * a[1][1] endl
-    local int z = -a[0][1] + --a[1][0] endl
-    local boolean b = a[0][0] > a[1][1] endl
+navidad ¿ ? ¡
+
+    local int a[2][2] = ¡ ¡1,2!, ¡3,4! ! endl
+    local int x = a[0][0] + a[1][1] endl
+
+    show x endl
+
+    decide of
+        true ->
+        ¡
+            local int x = 100 endl
+            local boolean flag = false endl
+
+            show x endl
+            show flag endl
+        !
+        false ->
+        ¡
+            local int y = 50 endl
+            show y endl
+        !
+    end decide endl
+
+    loop
+        local int i = 0 endl
+        show i endl
+
+        decide of
+            i == 0 ->
+            ¡
+                local int z = 999 endl
+                show z endl
+            !
+        end decide endl
+
+        exit when i >= 0 endl
+    end loop endl
+
+    for ¿ local int j = 0 endl j < 3 endl ++j ?
+    ¡
+        local int x = j * 10 endl
+        show x endl
+
+        decide of
+            x > 10 ->
+            ¡
+                local boolean flag = true endl
+                show flag endl
+            !
+        end decide endl
+    !
+
+    show g endl
+    show flag endl
+
 !
