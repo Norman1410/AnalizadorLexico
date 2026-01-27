@@ -31,4 +31,40 @@ public class UnaryNode extends ASTNode {
         if (expression != null)
             expression.print(indent + 1);
     }
+
+    @Override
+    public void validate(semantics.SymbolTable st) {
+        if (expression != null) expression.validate(st);
+
+        // Tipado fuerte básico: operadores unarios numéricos requieren int/float
+        String t = (expression == null) ? "error" : expression.getType(st);
+        if (t == null) t = "error";
+
+        if (operator != null && (operator.equals("-") || operator.equals("+") || operator.equals("neg"))) {
+            if (!t.equals("int") && !t.equals("float") && !t.equals("error")) {
+                System.err.println(
+                        "Error semántico (línea " + (getLine() + 1) + ", columna " + (getColumn() + 1) + "): " +
+                                "El operador unario '" + operator + "' requiere operando numérico (int/float), pero se obtuvo '" + t + "'."
+                );
+            }
+        }
+    }
+
+    @Override
+    public String getType(semantics.SymbolTable st) {
+        if (expression == null) return "error";
+
+        String t = expression.getType(st);
+        if (t == null) return "error";
+        if (t.equals("error")) return "error";
+
+        // Para + / - / neg, el tipo es el mismo que el operando (si es numérico)
+        if (operator != null && (operator.equals("-") || operator.equals("+") || operator.equals("neg"))) {
+            if (t.equals("int") || t.equals("float")) return t;
+            return "error";
+        }
+
+        // Si hay otros operadores unarios, por ahora devolvemos el tipo del operando
+        return t;
+    }
 }
