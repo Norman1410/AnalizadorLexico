@@ -53,7 +53,32 @@ public class FunctionNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
+        if (st == null) return;
+
+        st.enterScope(name);
+
+        // meta del tipo de función
+        st.declare(new semantics.SymbolInfo(
+                "tipo",
+                "function:" + returnType,
+                semantics.SymbolKind.META,
+                getLine(),
+                getColumn(),
+                java.util.Collections.emptyList()
+        ));
+
+        // declarar parámetros (y validar si ocupas)
+        if (parameters != null) {
+            for (ParamNode p : parameters) {
+                if (p != null) p.validate(st); // ParamNode.declare(PARAM)
+            }
+        }
+
+        if (block != null) block.validate(st);
+
+        st.exitScope();
     }
+
 
     @Override
     public String getType(semantics.SymbolTable st) {
@@ -63,4 +88,16 @@ public class FunctionNode extends ASTNode {
     public String getName() {
         return name;
     }
+    public String getReturnType() {
+        return returnType;
+    }
+
+    public List<ParamNode> getParams() {
+        return parameters;
+    }
+
+    public BlockNode getBlock() {
+        return (block instanceof BlockNode) ? (BlockNode) block : null;
+    }
+
 }

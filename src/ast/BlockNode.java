@@ -36,9 +36,22 @@ public class BlockNode extends ASTNode {
         }
     }
 
+
     @Override
     public void validate(semantics.SymbolTable st) {
+        if (st == null) return;
+
+        st.enterScope("block@" + getLine() + ":" + getColumn());
+
+        if (statements != null) {
+            for (ASTNode s : statements) {
+                if (s != null) s.validate(st);
+            }
+        }
+
+        st.exitScope();
     }
+
 
     @Override
     public String getType(semantics.SymbolTable st) {

@@ -33,7 +33,23 @@ public class MainNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
+        if (st == null) return;
+
+        st.enterScope("main");
+        st.declare(new semantics.SymbolInfo(
+                "tipo",
+                "main:void",
+                semantics.SymbolKind.META,
+                getLine(),
+                getColumn(),
+                java.util.Collections.emptyList()
+        ));
+
+        if (block != null) block.validate(st);
+
+        st.exitScope();
     }
+
 
     @Override
     public String getType(semantics.SymbolTable st) {

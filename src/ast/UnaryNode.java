@@ -42,7 +42,7 @@ public class UnaryNode extends ASTNode {
 
         if (operator != null && (operator.equals("-") || operator.equals("+") || operator.equals("neg"))) {
             if (!t.equals("int") && !t.equals("float") && !t.equals("error")) {
-                System.err.println(
+                st.addError(
                         "Error semántico (línea " + (getLine() + 1) + ", columna " + (getColumn() + 1) + "): " +
                                 "El operador unario '" + operator + "' requiere operando numérico (int/float), pero se obtuvo '" + t + "'."
                 );

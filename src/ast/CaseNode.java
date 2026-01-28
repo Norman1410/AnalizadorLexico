@@ -34,6 +34,17 @@ public class CaseNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
+        if (st == null) return;
+
+        if (expression != null) {
+            expression.validate(st);
+            String t = expression.getType(st);
+            if (t != null && !t.equals("error") && !t.equals("boolean")) {
+                st.addError("Case debe ser boolean (line=" + (getLine()+1) + ", col=" + (getColumn()+1) + ")");
+            }
+        }
+
+        if (block != null) block.validate(st);
     }
 
     @Override

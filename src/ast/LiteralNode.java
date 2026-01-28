@@ -40,11 +40,25 @@ public class LiteralNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
-
+        // nada grave: solo validar que el tipo exista
+        String t = normalizeType(type);
+        if (t.equals("unknown")) {
+            st.addError("Tipo de literal desconocido '" + type + "' (line=" + (getLine()+1) +
+                    ", col=" + (getColumn()+1) + ")");
+        }
     }
 
     @Override
     public String getType(semantics.SymbolTable st) {
-        return type;
+        return normalizeType(type);
+    }
+
+    private String normalizeType(String raw) {
+        if (raw == null) return "unknown";
+        String t = raw.trim().toLowerCase();
+        if (t.equals("bool")) return "boolean";
+        if (t.equals("boolean")) return "boolean";
+        if (t.equals("int") || t.equals("float") || t.equals("string") || t.equals("char")) return t;
+        return "unknown";
     }
 }

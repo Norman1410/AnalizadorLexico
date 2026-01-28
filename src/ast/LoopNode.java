@@ -37,7 +37,23 @@ public class LoopNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
+        if (st == null) return;
+
+        st.enterScope("loop@" + getLine() + ":" + getColumn());
+
+        if (block != null) block.validate(st);
+
+        if (exitCondition != null) {
+            exitCondition.validate(st);
+            String t = exitCondition.getType(st);
+            if (t != null && !t.equals("error") && !t.equals("boolean")) {
+                st.addError("Exit when requiere condición boolean (line=" + (getLine()+1) + ", col=" + (getColumn()+1) + ")");
+            }
+        }
+
+        st.exitScope();
     }
+
 
     @Override
     public String getType(semantics.SymbolTable st) {

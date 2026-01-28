@@ -187,5 +187,29 @@ public class SymbolTable {
 
         return sb.toString();
     }
+    // Abre un scope que ya fue cerrado (para validación semántica).
+// NO crea un mapa nuevo: reusa el que está en closedScopes para que lookup() funcione.
+    public void openClosedScope(String name) {
+        if (name == null) name = "scope";
 
+        // Buscar el ÚLTIMO scope con ese nombre (por si acaso)
+        for (int i = closedScopeNames.size() - 1; i >= 0; i--) {
+            if (name.equals(closedScopeNames.get(i))) {
+                scopeNames.push(name);
+                scopes.push(closedScopes.get(i));
+                return;
+            }
+        }
+
+        // Si no existe (por seguridad), abrir uno normal
+        enterScope(name);
+    }
+
+    // Cierra un scope abierto por openClosedScope() sin guardarlo otra vez en closedScopes
+    public void closeViewScope() {
+        if (!scopes.isEmpty() && !scopeNames.isEmpty()) {
+            scopes.pop();
+            scopeNames.pop();
+        }
+    }
 }

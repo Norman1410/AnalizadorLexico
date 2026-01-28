@@ -36,7 +36,18 @@ public class ParamNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
+        if (st == null) return;
+
+        st.declare(new semantics.SymbolInfo(
+                name,
+                type,
+                semantics.SymbolKind.PARAM,
+                getLine(),
+                getColumn(),
+                java.util.Collections.emptyList()
+        ));
     }
+
 
     @Override
     public String getType(semantics.SymbolTable st) {

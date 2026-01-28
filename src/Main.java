@@ -55,16 +55,49 @@ public class Main {
                     System.out.println("ÁRBOL SINTÁCTICO GENERADO");
                     program.print(0);
 
-                    // Tabla de símbolos
-                    SymbolTable symtab = program.buildSymbolTable();
-                    program.validateArraySemantics(symtab);
-                    System.out.println("\nTABLA DE SÍMBOLOS");
-                    System.out.println(symtab.toPrettyStringByScope());
+// ======================
+// SEMÁNTICA (Proyecto 3)
+// ======================
+                    SymbolTable semTab = new SymbolTable();
 
-                    try (PrintWriter stWriter = new PrintWriter(new FileWriter("symbol_table.txt"))) {
-                        stWriter.print(symtab.toPrettyStringByScope());
+                    if (parser.getSyntaxErrors() == 0) {
+                        // Recorre AST y aplica validate/getType en nodos
+                        program.validate(semTab);
+
+                        // Reporte semántico
+                        if (semTab.getErrors().isEmpty()) {
+                            System.out.println("\nSEMÁNTICA: OK (sin errores semánticos)");
+                        } else {
+                            System.out.println("\nSEMÁNTICA: NO (errores semánticos = " + semTab.getErrors().size() + ")");
+                        }
+
+                        // Imprimir tabla + errores (por scopes) desde la misma SymbolTable de semántica
+                        System.out.println("\nTABLA DE SÍMBOLOS");
+                        System.out.println(semTab.toPrettyStringByScope());
+
+                        // Exportar tabla de símbolos
+                        try (PrintWriter stWriter = new PrintWriter(new FileWriter("symbol_table.txt"))) {
+                            stWriter.print(semTab.toPrettyStringByScope());
+                        }
+                        System.out.println("Tabla de símbolos exportada a 'symbol_table.txt'");
+                    } else {
+                        System.out.println("\nSEMÁNTICA: omitida por errores sintácticos.");
                     }
-                    System.out.println("Tabla de símbolos exportada a 'symbol_table.txt'");
+
+                    // Veredicto final
+                    if (parser.getSyntaxErrors() == 0) {
+                        // Aquí sí evaluamos semántica
+                        if (semTab.getErrors().isEmpty()) {
+                            System.out.println("\nRESULTADO FINAL: El programa ES válido (sintaxis y semántica).");
+                        } else {
+                            System.out.println("\nRESULTADO FINAL: El programa NO es válido.");
+                            System.out.println(" - Falló por semántica (errores semánticos: " + semTab.getErrors().size() + ")");
+                        }
+                    } else {
+                        // Si hay errores sintácticos, semántica se omitió
+                        System.out.println("\nRESULTADO FINAL: El programa NO es válido.");
+                        System.out.println(" - Falló por sintaxis (errores sintácticos: " + parser.getSyntaxErrors() + ")");
+                    }
 
                     // Exportar AST a JSON
                     Map<String, Object> astJson = program.toJsonObject();

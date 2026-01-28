@@ -55,5 +55,4 @@ navidad ¿ ? ¡
 
     show g endl
     show flag endl
-
 !

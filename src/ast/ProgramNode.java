@@ -58,18 +58,60 @@ public class ProgramNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
+        if (st == null) return;
+
+        // Asegurar global abierto
+        st.enterScope("global");
+
+        // 1) Declarar globales
         if (declarations != null) {
-            for (ASTNode d : declarations)
-                d.validate(st);
+            for (ASTNode d : declarations) {
+                if (d instanceof DeclNode dn) {
+                    st.declare(new semantics.SymbolInfo(
+                            dn.getName(),
+                            dn.getTypeName(),
+                            semantics.SymbolKind.GLOBAL_VAR,
+                            dn.getLine(),
+                            dn.getColumn(),
+                            dn.getDims()
+                    ));
+                }
+            }
         }
+
+        // 2) Registrar firmas de funciones en global
         if (functions != null) {
-            for (ASTNode f : functions)
-                f.validate(st);
+            for (ASTNode f : functions) {
+                if (f instanceof FunctionNode fn) {
+                    st.declare(new semantics.SymbolInfo(
+                            fn.getName(),
+                            fn.getReturnType(),
+                            semantics.SymbolKind.FUNCTION,
+                            fn.getLine(),
+                            fn.getColumn(),
+                            java.util.Collections.emptyList()
+                    ));
+                }
+            }
         }
+
+        // 3) Validar funciones (scope + params + block)
+        if (functions != null) {
+            for (ASTNode f : functions) {
+                if (f instanceof FunctionNode fn) {
+                    fn.validate(st);
+                }
+            }
+        }
+
+        // 4) Validar main
         if (mainBlock != null) {
             mainBlock.validate(st);
         }
+
+        st.exitScope(); // cerrar global
     }
+
 
     @Override
     public String getType(semantics.SymbolTable st) {

@@ -49,7 +49,20 @@ public class DeclNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
+        if (st == null) return;
+
+        st.declare(new semantics.SymbolInfo(
+                identifier,
+                varType,
+                isGlobal ? semantics.SymbolKind.GLOBAL_VAR : semantics.SymbolKind.LOCAL_VAR,
+                getLine(),
+                getColumn(),
+                getDims()
+        ));
+
+        if (initializer != null) initializer.validate(st);
     }
+
 
     @Override
     public String getType(semantics.SymbolTable st) {
