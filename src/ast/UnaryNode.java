@@ -34,37 +34,52 @@ public class UnaryNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
-        if (expression != null) expression.validate(st);
+        if (expression != null)
+            expression.validate(st);
 
-        // Tipado fuerte básico: operadores unarios numéricos requieren int/float
-        String t = (expression == null) ? "error" : expression.getType(st);
-        if (t == null) t = "error";
+        String t = getType(st);
+        if (t.equals("error"))
+            return;
 
-        if (operator != null && (operator.equals("-") || operator.equals("+") || operator.equals("neg"))) {
-            if (!t.equals("int") && !t.equals("float") && !t.equals("error")) {
-                st.addError(
-                        "Error semántico (línea " + (getLine() + 1) + ", columna " + (getColumn() + 1) + "): " +
-                                "El operador unario '" + operator + "' requiere operando numérico (int/float), pero se obtuvo '" + t + "'."
-                );
+        // Validaciones específicas de operadores
+        if (operator.equals("++") || operator.equals("--")) {
+            if (!(expression instanceof VariableNode) && !(expression instanceof ArrayAccessNode)) {
+                st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                        "El operador '" + operator
+                        + "' solo puede aplicarse a variables o elementos de arreglo (lvalues).");
             }
         }
     }
 
     @Override
     public String getType(semantics.SymbolTable st) {
-        if (expression == null) return "error";
+        if (expression == null)
+            return "error";
 
         String t = expression.getType(st);
-        if (t == null) return "error";
-        if (t.equals("error")) return "error";
+        if (t.equals("error") || t.equals("unknown"))
+            return t;
 
-        // Para + / - / neg, el tipo es el mismo que el operando (si es numérico)
-        if (operator != null && (operator.equals("-") || operator.equals("+") || operator.equals("neg"))) {
-            if (t.equals("int") || t.equals("float")) return t;
-            return "error";
+        if (operator == null)
+            return t;
+        if (operator.equals("!")) {
+            if (!t.equals("boolean")) {
+                st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                        "El operador '!' requiere un operando booleano, pero se obtuvo '" + t + "'.");
+                return "error";
+            }
+            return "boolean";
+        }
+        if (operator.equals("+") || operator.equals("-") || operator.equals("++") ||
+                operator.equals("--") || operator.equals("neg")) {
+            if (!t.equals("int") && !t.equals("float")) {
+                st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                        "El operador '" + operator + "' requiere un operando numérico, pero se obtuvo '" + t + "'.");
+                return "error";
+            }
+            return t;
         }
 
-        // Si hay otros operadores unarios, por ahora devolvemos el tipo del operando
         return t;
     }
 }

@@ -37,8 +37,10 @@ public class BinaryNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
-        if (left != null) left.validate(st);
-        if (right != null) right.validate(st);
+        if (left != null)
+            left.validate(st);
+        if (right != null)
+            right.validate(st);
 
         // fuerza el cálculo para que, si hay error, se agregue al st
         getType(st);
@@ -49,71 +51,93 @@ public class BinaryNode extends ASTNode {
         String lt = (left == null) ? "error" : safeType(left.getType(st));
         String rt = (right == null) ? "error" : safeType(right.getType(st));
 
-        if ("error".equals(lt) || "error".equals(rt)) return "error";
-        if ("unknown".equals(lt) || "unknown".equals(rt)) return "unknown";
+        if ("error".equals(lt) || "error".equals(rt))
+            return "error";
+        if ("unknown".equals(lt) || "unknown".equals(rt))
+            return "unknown";
 
         String op = (operator == null) ? "" : operator;
 
-        // Aritméticos: + - * / %
-        if (op.equals("+") || op.equals("-") || op.equals("*") || op.equals("/") || op.equals("%")) {
+        // Aritméticos: + - * / // % ^
+        if (op.equals("+") || op.equals("-") || op.equals("*") || op.equals("/") ||
+                op.equals("//") || op.equals("%") || op.equals("^")) {
+
             if (!isNumeric(lt) || !isNumeric(rt)) {
-                st.addError("Error semántico: Operador '" + op + "' requiere operandos numéricos, pero se obtuvo '" +
-                        lt + "' y '" + rt + "' (línea=" + (getLine() + 1) + ", col=" + (getColumn() + 1) + ")");
+                st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                        "El operador '" + op + "' requiere operandos numéricos, pero se obtuvo '" + lt + "' y '" + rt
+                        + "'.");
                 return "error";
             }
-            // promoción: si alguno es float -> float, si no -> int
-            if (lt.equals("float") || rt.equals("float")) return "float";
+
+            // Reglas específicas
+            if (op.equals("%")) {
+                if (!lt.equals("int") || !rt.equals("int")) {
+                    st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                            "El operador '%' solo es válido para enteros (int), pero se obtuvo '" + lt + "' y '" + rt
+                            + "'.");
+                    return "error";
+                }
+                return "int";
+            }
+            if (op.equals("//"))
+                return "int";
+            if (op.equals("^"))
+                return "float";
+
+            // Promoción estándar para + - * /
+            if (lt.equals("float") || rt.equals("float"))
+                return "float";
             return "int";
         }
 
-        // Relacionales: < <= > >=  => boolean (solo numéricos)
+        // Relacionales: < <= > >= => boolean (solo numéricos)
         if (op.equals("<") || op.equals("<=") || op.equals(">") || op.equals(">=")) {
             if (!isNumeric(lt) || !isNumeric(rt)) {
-                st.addError("Error semántico: Operador '" + op + "' requiere operandos numéricos, pero se obtuvo '" +
-                        lt + "' y '" + rt + "' (línea=" + (getLine() + 1) + ", col=" + (getColumn() + 1) + ")");
+                st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                        "El operador '" + op + "' requiere operandos numéricos, pero se obtuvo '" + lt + "' y '" + rt
+                        + "'.");
                 return "error";
             }
             return "boolean";
         }
 
-        // Igualdad: == !=  => boolean
+        // Igualdad: == != => boolean
         if (op.equals("==") || op.equals("!=")) {
             // Permitimos int==float como comparación numérica
-            if (isNumeric(lt) && isNumeric(rt)) return "boolean";
+            if (isNumeric(lt) && isNumeric(rt))
+                return "boolean";
 
             if (!lt.equals(rt)) {
-                st.addError("Error semántico: Operador '" + op + "' requiere tipos compatibles, pero se obtuvo '" +
-                        lt + "' y '" + rt + "' (línea=" + (getLine() + 1) + ", col=" + (getColumn() + 1) + ")");
+                st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                        "El operador '" + op + "' requiere tipos compatibles, pero se obtuvo '" + lt + "' y '" + rt
+                        + "'.");
                 return "error";
             }
             return "boolean";
         }
 
-        // Lógicos: && ||  => boolean
+        // Lógicos: && || => boolean
         if (op.equals("&&") || op.equals("||")) {
             if (!lt.equals("boolean") || !rt.equals("boolean")) {
-                st.addError("Error semántico: Operador '" + op + "' requiere boolean/boolean, pero se obtuvo '" +
-                        lt + "' y '" + rt + "' (línea=" + (getLine() + 1) + ", col=" + (getColumn() + 1) + ")");
+                st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                        "El operador '" + op + "' requiere operandos booleanos, pero se obtuvo '" + lt + "' y '" + rt
+                        + "'.");
                 return "error";
             }
             return "boolean";
         }
 
-        // Si no lo reconocemos, error
-        st.addError("Error semántico: Operador binario desconocido '" + op + "' (línea=" +
-                (getLine() + 1) + ", col=" + (getColumn() + 1) + ")");
+        st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                "Operador binario desconocido '" + op + "'.");
         return "error";
     }
 
-    // Helper: por si algún nodo devuelve "bool"
     private String safeType(String t) {
-        if (t == null) return "unknown";
-        if (t.equals("bool")) return "boolean";
+        if (t == null)
+            return "unknown";
+        if (t.equals("bool"))
+            return "boolean";
         return t;
-    }
-
-    private boolean isNumeric(String t) {
-        return t.equals("int") || t.equals("float");
     }
 
 }

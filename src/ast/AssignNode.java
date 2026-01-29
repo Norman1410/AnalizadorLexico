@@ -34,6 +34,34 @@ public class AssignNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
+        if (target != null)
+            target.validate(st);
+        if (expression != null)
+            expression.validate(st);
+
+        if (target == null || expression == null)
+            return;
+
+        if (!(target instanceof VariableNode) && !(target instanceof ArrayAccessNode)) {
+            st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                    "La parte izquierda de una asignación debe ser un lvalue (variable o acceso a arreglo).");
+            return;
+        }
+
+        // verificar tipos
+        String targetType = target.getType(st);
+        String exprType = expression.getType(st);
+
+        if ("error".equals(targetType) || "error".equals(exprType))
+            return;
+        if ("unknown".equals(targetType) || "unknown".equals(exprType))
+            return;
+
+        if (!isCompatible(targetType, exprType)) {
+            st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                    "Tipo incompatible en asignación. No se puede asignar '" + exprType + "' a un '" + targetType
+                    + "'.");
+        }
     }
 
     @Override

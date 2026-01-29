@@ -55,24 +55,29 @@ public class ForNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
-        if (st == null) return;
+        if (st == null)
+            return;
 
-        st.enterScope("for@" + getLine() + ":" + getColumn());
+        st.openClosedScope("for@" + getLine() + ":" + getColumn());
 
-        if (init != null) init.validate(st);
+        if (init != null)
+            init.validate(st);
 
         if (condition != null) {
             condition.validate(st);
             String ct = condition.getType(st);
-            if (ct != null && !ct.equals("error") && !ct.equals("boolean")) {
-                st.addError("Condición de for debe ser boolean (line=" + (getLine()+1) + ", col=" + (getColumn()+1) + ")");
+            if (!"error".equals(ct) && !"unknown".equals(ct) && !"boolean".equals(ct)) {
+                st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                        "La condición de 'for' debe ser boolean, pero se obtuvo '" + ct + "'.");
             }
         }
 
-        if (step != null) step.validate(st);
-        if (block != null) block.validate(st);
+        if (step != null)
+            step.validate(st);
+        if (block != null)
+            block.validate(st);
 
-        st.exitScope();
+        st.closeViewScope();
     }
 
     @Override

@@ -58,12 +58,12 @@ public class ProgramNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
-        if (st == null) return;
+        if (st == null)
+            return;
 
-        // Asegurar global abierto
+        // global abierto
         st.enterScope("global");
 
-        // 1) Declarar globales
         if (declarations != null) {
             for (ASTNode d : declarations) {
                 if (d instanceof DeclNode dn) {
@@ -73,13 +73,11 @@ public class ProgramNode extends ASTNode {
                             semantics.SymbolKind.GLOBAL_VAR,
                             dn.getLine(),
                             dn.getColumn(),
-                            dn.getDims()
-                    ));
+                            dn.getDims()));
                 }
             }
         }
 
-        // 2) Registrar firmas de funciones en global
         if (functions != null) {
             for (ASTNode f : functions) {
                 if (f instanceof FunctionNode fn) {
@@ -89,13 +87,12 @@ public class ProgramNode extends ASTNode {
                             semantics.SymbolKind.FUNCTION,
                             fn.getLine(),
                             fn.getColumn(),
-                            java.util.Collections.emptyList()
-                    ));
+                            java.util.Collections.emptyList()));
                 }
             }
         }
 
-        // 3) Validar funciones (scope + params + block)
+        // scope + params + block
         if (functions != null) {
             for (ASTNode f : functions) {
                 if (f instanceof FunctionNode fn) {
@@ -109,9 +106,8 @@ public class ProgramNode extends ASTNode {
             mainBlock.validate(st);
         }
 
-        st.exitScope(); // cerrar global
+        st.exitScope();
     }
-
 
     @Override
     public String getType(semantics.SymbolTable st) {
@@ -119,7 +115,7 @@ public class ProgramNode extends ASTNode {
     }
 
     public semantics.SymbolTable buildSymbolTable() {
-        semantics.SymbolTable st = new semantics.SymbolTable(); // ya entra a "global" en el constructor
+        semantics.SymbolTable st = new semantics.SymbolTable();
 
         // 1) Globales
         if (declarations != null) {
@@ -131,21 +127,22 @@ public class ProgramNode extends ASTNode {
                             semantics.SymbolKind.GLOBAL_VAR,
                             d.getLine(),
                             d.getColumn(),
-                            d.getDims()
-                    ));
+                            d.getDims()));
                 }
             }
         }
 
-        // 2) Funciones (sin depender de getters específicos)
+        // 2) Funciones
         if (functions != null) {
             for (ASTNode fn : functions) {
-                if (!(fn instanceof FunctionNode)) continue;
+                if (!(fn instanceof FunctionNode))
+                    continue;
 
                 Object f = fn;
 
                 String fname = callString(f, "getName");
-                if (fname == null) fname = "function@" + fn.getLine() + ":" + fn.getColumn();
+                if (fname == null)
+                    fname = "function@" + fn.getLine() + ":" + fn.getColumn();
 
                 String rtype = firstNonNull(
                         callString(f, "getReturnType"),
@@ -153,9 +150,9 @@ public class ProgramNode extends ASTNode {
                         callString(f, "getType"),
                         getStringField(f, "returnType"),
                         getStringField(f, "type"),
-                        getStringField(f, "typeName")
-                );
-                if (rtype == null) rtype = "void";
+                        getStringField(f, "typeName"));
+                if (rtype == null)
+                    rtype = "void";
 
                 // declarar firma en global
                 st.declare(new semantics.SymbolInfo(
@@ -164,8 +161,7 @@ public class ProgramNode extends ASTNode {
                         semantics.SymbolKind.FUNCTION,
                         fn.getLine(),
                         fn.getColumn(),
-                        java.util.Collections.emptyList()
-                ));
+                        java.util.Collections.emptyList()));
 
                 // scope de función
                 st.enterScope(fname);
@@ -176,21 +172,20 @@ public class ProgramNode extends ASTNode {
                         semantics.SymbolKind.META,
                         fn.getLine(),
                         fn.getColumn(),
-                        java.util.Collections.emptyList()
-                ));
+                        java.util.Collections.emptyList()));
 
-                // parámetros (lista con nombres variables)
+                // parámetros
                 List<?> params = firstNonNullList(
                         callList(f, "getParams"),
                         callList(f, "getParameters"),
                         callList(f, "getParamList"),
                         getListField(f, "params"),
-                        getListField(f, "parameters")
-                );
+                        getListField(f, "parameters"));
 
                 if (params != null) {
                     for (Object p : params) {
-                        if (!(p instanceof ParamNode)) continue;
+                        if (!(p instanceof ParamNode))
+                            continue;
                         ParamNode pn = (ParamNode) p;
                         st.declare(new semantics.SymbolInfo(
                                 pn.getName(),
@@ -198,18 +193,16 @@ public class ProgramNode extends ASTNode {
                                 semantics.SymbolKind.PARAM,
                                 pn.getLine(),
                                 pn.getColumn(),
-                                java.util.Collections.emptyList()
-                        ));
+                                java.util.Collections.emptyList()));
                     }
                 }
 
-                // bloque de función (BlockNode con nombres variables)
+                // bloque de función
                 BlockNode fb = firstNonNullBlock(
                         (BlockNode) callObject(f, "getBlock"),
                         (BlockNode) callObject(f, "getBody"),
                         (BlockNode) getObjectField(f, "block"),
-                        (BlockNode) getObjectField(f, "body")
-                );
+                        (BlockNode) getObjectField(f, "body"));
 
                 if (fb != null) {
                     collectLocalsFromBlock(fb, st);
@@ -219,7 +212,6 @@ public class ProgramNode extends ASTNode {
             }
         }
 
-        // 3) Main
         st.enterScope("main");
 
         st.declare(new semantics.SymbolInfo(
@@ -228,15 +220,13 @@ public class ProgramNode extends ASTNode {
                 semantics.SymbolKind.META,
                 (mainBlock != null ? mainBlock.getLine() : 0),
                 (mainBlock != null ? mainBlock.getColumn() : 0),
-                java.util.Collections.emptyList()
-        ));
+                java.util.Collections.emptyList()));
 
         BlockNode mb = firstNonNullBlock(
                 (BlockNode) callObject(mainBlock, "getBlock"),
                 (BlockNode) callObject(mainBlock, "getBody"),
                 (BlockNode) getObjectField(mainBlock, "block"),
-                (BlockNode) getObjectField(mainBlock, "body")
-        );
+                (BlockNode) getObjectField(mainBlock, "body"));
 
         if (mb != null) {
             collectLocalsFromBlock(mb, st);
@@ -247,10 +237,8 @@ public class ProgramNode extends ASTNode {
         return st;
     }
 
-
     private void collectLocalsFromBlock(BlockNode b, semantics.SymbolTable st) {
 
-        // ABRIR scope para ESTE bloque
         st.enterScope("block@" + b.getLine() + ":" + b.getColumn());
 
         for (ASTNode stmt : b.getStatements()) {
@@ -263,8 +251,7 @@ public class ProgramNode extends ASTNode {
                         semantics.SymbolKind.LOCAL_VAR,
                         d.getLine(),
                         d.getColumn(),
-                        d.getDims()
-                ));
+                        d.getDims()));
             }
 
             // Bloque anidado
@@ -292,7 +279,7 @@ public class ProgramNode extends ASTNode {
             // For
             else if (stmt instanceof ForNode fn) {
 
-                // Scope propio del for (por el init)
+                // Scope propio del for
                 st.enterScope("for@" + fn.getLine() + ":" + fn.getColumn());
 
                 if (fn.getInit() instanceof DeclNode d) {
@@ -302,8 +289,7 @@ public class ProgramNode extends ASTNode {
                             semantics.SymbolKind.LOCAL_VAR,
                             d.getLine(),
                             d.getColumn(),
-                            d.getDims()
-                    ));
+                            d.getDims()));
                 }
 
                 collectLocalsFromBlock(fn.getBody(), st);
@@ -315,21 +301,31 @@ public class ProgramNode extends ASTNode {
         // CERRAR scope del bloque
         st.exitScope();
     }
+
     private static String firstNonNull(String... xs) {
-        if (xs == null) return null;
-        for (String x : xs) if (x != null) return x;
+        if (xs == null)
+            return null;
+        for (String x : xs)
+            if (x != null)
+                return x;
         return null;
     }
 
     private static List<?> firstNonNullList(List<?>... xs) {
-        if (xs == null) return null;
-        for (List<?> x : xs) if (x != null) return x;
+        if (xs == null)
+            return null;
+        for (List<?> x : xs)
+            if (x != null)
+                return x;
         return null;
     }
 
     private static BlockNode firstNonNullBlock(BlockNode... xs) {
-        if (xs == null) return null;
-        for (BlockNode x : xs) if (x != null) return x;
+        if (xs == null)
+            return null;
+        for (BlockNode x : xs)
+            if (x != null)
+                return x;
         return null;
     }
 
@@ -345,7 +341,8 @@ public class ProgramNode extends ASTNode {
     }
 
     private static Object callObject(Object obj, String method) {
-        if (obj == null || method == null) return null;
+        if (obj == null || method == null)
+            return null;
         try {
             var m = obj.getClass().getMethod(method);
             m.setAccessible(true);
@@ -366,7 +363,8 @@ public class ProgramNode extends ASTNode {
     }
 
     private static Object getObjectField(Object obj, String field) {
-        if (obj == null || field == null) return null;
+        if (obj == null || field == null)
+            return null;
         try {
             Class<?> c = obj.getClass();
             while (c != null) {
@@ -383,7 +381,6 @@ public class ProgramNode extends ASTNode {
             return null;
         }
     }
-
 
     public void validateArraySemantics(semantics.SymbolTable st) {
     }

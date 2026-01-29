@@ -49,24 +49,46 @@ public class DeclNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
-        if (st == null) return;
+        if (st == null)
+            return;
+
+        String fullType = getFullType();
 
         st.declare(new semantics.SymbolInfo(
                 identifier,
-                varType,
+                fullType,
                 isGlobal ? semantics.SymbolKind.GLOBAL_VAR : semantics.SymbolKind.LOCAL_VAR,
                 getLine(),
                 getColumn(),
-                getDims()
-        ));
+                getDims()));
 
-        if (initializer != null) initializer.validate(st);
+        if (initializer != null) {
+            initializer.validate(st);
+            String initType = initializer.getType(st);
+
+            if (!"error".equals(initType) && !"unknown".equals(initType)) {
+                if (!isCompatible(fullType, initType)) {
+                    st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                            "Tipo incompatible en la declaración de '" + identifier + "'. Se esperaba '" + fullType +
+                            "' pero se obtuvo '" + initType + "'.");
+                }
+            }
+        }
     }
 
+    private String getFullType() {
+        StringBuilder sb = new StringBuilder(varType);
+        if (dimensions != null) {
+            for (int i = 0; i < dimensions.size(); i++) {
+                sb.append("[]");
+            }
+        }
+        return sb.toString();
+    }
 
     @Override
     public String getType(semantics.SymbolTable st) {
-        return varType;
+        return getFullType();
     }
 
     public String getName() {

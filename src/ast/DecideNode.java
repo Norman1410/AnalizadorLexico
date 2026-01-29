@@ -52,19 +52,22 @@ public class DecideNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
-        if (st == null) return;
+        if (st == null)
+            return;
 
         if (expression != null) {
             expression.validate(st);
             String t = expression.getType(st);
-            if (t != null && !t.equals("error") && !t.equals("boolean")) {
-                st.addError("Decide requiere condición boolean (line=" + (getLine()+1) + ", col=" + (getColumn()+1) + ")");
+            if (!"error".equals(t) && !"unknown".equals(t) && !"boolean".equals(t)) {
+                st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                        "La condición de 'decide' debe ser boolean, pero se obtuvo '" + t + "'.");
             }
         }
 
         if (cases != null) {
             for (ASTNode c : cases) {
-                if (c != null) c.validate(st);
+                if (c != null)
+                    c.validate(st);
             }
         }
 
@@ -72,7 +75,6 @@ public class DecideNode extends ASTNode {
             elseBlock.validate(st);
         }
     }
-
 
     @Override
     public String getType(semantics.SymbolTable st) {

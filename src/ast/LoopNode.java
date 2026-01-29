@@ -37,23 +37,25 @@ public class LoopNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
-        if (st == null) return;
+        if (st == null)
+            return;
 
-        st.enterScope("loop@" + getLine() + ":" + getColumn());
+        st.openClosedScope("loop@" + getLine() + ":" + getColumn());
 
-        if (block != null) block.validate(st);
+        if (block != null)
+            block.validate(st);
 
         if (exitCondition != null) {
             exitCondition.validate(st);
             String t = exitCondition.getType(st);
-            if (t != null && !t.equals("error") && !t.equals("boolean")) {
-                st.addError("Exit when requiere condición boolean (line=" + (getLine()+1) + ", col=" + (getColumn()+1) + ")");
+            if (!"error".equals(t) && !"unknown".equals(t) && !"boolean".equals(t)) {
+                st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                        "La condición de 'exit when' debe ser boolean, pero se obtuvo '" + t + "'.");
             }
         }
 
-        st.exitScope();
+        st.closeViewScope();
     }
-
 
     @Override
     public String getType(semantics.SymbolTable st) {

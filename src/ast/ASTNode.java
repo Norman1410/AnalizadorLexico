@@ -49,4 +49,18 @@ public abstract class ASTNode {
             System.out.print("  ");
         }
     }
+
+    protected boolean isNumeric(String t) {
+        return "int".equals(t) || "float".equals(t);
+    }
+
+    protected boolean isCompatible(String target, String source) {
+        if (target == null || source == null)
+            return false;
+        if (target.equals(source))
+            return true;
+        if (target.equals("float") && source.equals("int"))
+            return true;
+        return false;
+    }
 }

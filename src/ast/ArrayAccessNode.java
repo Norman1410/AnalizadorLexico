@@ -12,8 +12,13 @@ public class ArrayAccessNode extends ASTNode {
         this.indices = indices;
     }
 
-    public VariableNode getArray() { return array; }
-    public List<ASTNode> getIndices() { return indices; }
+    public VariableNode getArray() {
+        return array;
+    }
+
+    public List<ASTNode> getIndices() {
+        return indices;
+    }
 
     @Override
     public Map<String, Object> toJsonObject() {
@@ -21,7 +26,9 @@ public class ArrayAccessNode extends ASTNode {
         node.put("array", array.toJsonObject());
 
         List<Map<String, Object>> idx = new ArrayList<>();
-        if (indices != null) for (ASTNode e : indices) idx.add(e.toJsonObject());
+        if (indices != null)
+            for (ASTNode e : indices)
+                idx.add(e.toJsonObject());
         node.put("indices", idx);
 
         return node;
@@ -32,12 +39,16 @@ public class ArrayAccessNode extends ASTNode {
         printIndent(indent);
         System.out.println("ArrayAccess:");
         array.print(indent + 1);
-        if (indices != null) for (ASTNode e : indices) e.print(indent + 1);
+        if (indices != null)
+            for (ASTNode e : indices)
+                e.print(indent + 1);
     }
+
     @Override
     public void validate(semantics.SymbolTable st) {
         // Validar el identificador del arreglo
-        if (array != null) array.validate(st);
+        if (array != null)
+            array.validate(st);
 
         // Validar cada índice
         if (indices != null) {
@@ -45,13 +56,11 @@ public class ArrayAccessNode extends ASTNode {
                 if (idx != null) {
                     idx.validate(st);
 
-                    // Tipado fuerte básico: los índices deberían ser int
                     String t = idx.getType(st);
-                    if (t != null && !t.equals("int") && !t.equals("error")) {
-                        System.err.println(
-                                "Error semántico (línea " + (getLine() + 1) + ", columna " + (getColumn() + 1) + "): " +
-                                        "El índice de un arreglo debe ser int, pero se obtuvo '" + t + "'."
-                        );
+                    if (!"error".equals(t) && !"unknown".equals(t) && !"int".equals(t)) {
+                        st.addError("Error semántico (línea " + (idx.getLine() + 1) + ", col " + (idx.getColumn() + 1)
+                                + "): " +
+                                "El índice de un arreglo debe ser int, pero se obtuvo '" + t + "'.");
                     }
                 }
             }
@@ -60,27 +69,25 @@ public class ArrayAccessNode extends ASTNode {
 
     @Override
     public String getType(semantics.SymbolTable st) {
-        // Si no hay arreglo, devolvemos error para no reventar en modo pánico
-        if (array == null) return "error";
+        if (array == null)
+            return "error";
 
-        // Tipo del arreglo (depende de cómo VariableNode lo represente)
-        String t = array.getType(st);
-        if (t == null) return "error";
-        if (t.equals("error")) return "error";
+        String t = array.getType(st); // ej: "int[][]"
+        if ("error".equals(t) || "unknown".equals(t))
+            return t;
 
-        // Si el tipo viene como "int[][]" / "float[]" / etc., quitamos una "[]" por cada índice
         int k = (indices == null) ? 0 : indices.size();
+        String originalType = t;
+
+        // Descontar dimensiones por cada índice usado
         while (k > 0 && t.endsWith("[]")) {
             t = t.substring(0, t.length() - 2);
             k--;
         }
 
-        // Si aún quedaban índices pero ya no es arreglo => error semántico suave
         if (k > 0) {
-            System.err.println(
-                    "Error semántico (línea " + (getLine() + 1) + ", columna " + (getColumn() + 1) + "): " +
-                            "Se están usando demasiados índices para el tipo '" + array.getType(st) + "'."
-            );
+            st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                    "Se están usando demasiados índices para el tipo '" + originalType + "'.");
             return "error";
         }
 

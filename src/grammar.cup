@@ -41,7 +41,7 @@ terminal SHOW, GET;
 terminal GIFT, NAVIDAD, COAL;
 
 /* Tipos */
-terminal INT, FLOAT, CHAR, STRING, BOOLEAN; 
+terminal INT, FLOAT, CHAR, STRING, BOOLEAN, VOID; 
 terminal COMMA, LBRACKET, RBRACKET, ASSIGN;
 
 terminal LPAR, RPAR;      /* ¿ y ? */
@@ -58,7 +58,8 @@ terminal ERROR, UMINUS;
 
 /*  No terminales  */
 non terminal ProgramNode program;
-non terminal List<ASTNode> decl_list;
+non terminal List<ASTNode> top_elements;
+non terminal ASTNode top_element;
 non terminal ASTNode decl_global;
 non terminal MainNode main_nav;
 non terminal BlockNode bloque;
@@ -96,27 +97,38 @@ precedence left LPAR;
 start with program;
 
 /*  Producciones  */
-program ::= decl_list:dl funciones_list:fl main_nav:m
-          {: RESULT = new ProgramNode(dl, fl, m, dlleft, dlright); :}
+program ::= top_elements:el
+          {:
+             List<ASTNode> decls = new ArrayList<>();
+             List<ASTNode> funcs = new ArrayList<>();
+             ASTNode mainB = null;
+
+             for (ASTNode n : el) {
+                 if (n instanceof DeclNode) decls.add(n);
+                 else if (n instanceof FunctionNode) funcs.add(n);
+                 else if (n instanceof MainNode) mainB = n;
+             }
+             RESULT = new ProgramNode(decls, funcs, mainB, elleft, elright); 
+          :}
           ;
 
-decl_list ::= /* empty */
-            {: RESULT = new ArrayList<ASTNode>(); :}
-            | decl_list:dl decl_global:dg
-            {: if(dg != null) dl.add(dg); RESULT = dl; :}
-            ;
+top_elements ::= top_element:e
+               {: List<ASTNode> l = new ArrayList<>(); if(e != null) l.add(e); RESULT = l; :}
+             | top_elements:l top_element:e
+               {: if(e != null) l.add(e); RESULT = l; :}
+             ;
 
-funciones_list ::= /* empty */
-                 {: RESULT = new ArrayList<ASTNode>(); :}
-                 | funciones_list:fl funcion:f
-                 {: if(f != null) fl.add(f); RESULT = fl; :}
-                 ;
+top_element ::= decl_global:d {: RESULT = d; :}
+              | funcion:f     {: RESULT = f; :}
+              | main_nav:m    {: RESULT = m; :}
+              ;
 
 tipo ::= INT {: RESULT = "int"; :}
        | FLOAT {: RESULT = "float"; :}
        | CHAR {: RESULT = "char"; :}
        | STRING {: RESULT = "string"; :}
        | BOOLEAN {: RESULT = "boolean"; :}
+       | VOID {: RESULT = "void"; :}
        ;
 
 decl_global ::= WORLD tipo:t IDENT:id ENDL
@@ -189,6 +201,24 @@ decl ::= LOCAL tipo:t IDENT:id ENDL
        | LOCAL tipo:t IDENT:id ASSIGN expr:e ENDL
          {: RESULT = new DeclNode(id, e, false, t, new ArrayList<>(), idleft, idright); :}
        /* Soporte arreglos */
+       | LOCAL tipo:t IDENT:id LBRACKET INT_LIT:sz1 RBRACKET ENDL
+         {: 
+            List<Integer> dims = new ArrayList<>(); 
+            dims.add(Integer.parseInt(sz1.toString())); 
+            RESULT = new DeclNode(id, null, false, t, dims, idleft, idright); 
+         :}
+       | LOCAL tipo:t IDENT:id LBRACKET INT_LIT:sz1 RBRACKET ASSIGN LBRACE lista_init:l RBRACE ENDL
+         {:
+            List<Integer> dims = new ArrayList<>();
+            dims.add(Integer.parseInt(sz1.toString()));
+            RESULT = new DeclNode(id, new ArrayLiteralNode(l, lleft, lright), false, t, dims, idleft, idright);
+         :}
+       | LOCAL tipo:t IDENT:id LBRACKET INT_LIT:sz1 RBRACKET ARROW LBRACE lista_init:l RBRACE ENDL
+         {:
+            List<Integer> dims = new ArrayList<>();
+            dims.add(Integer.parseInt(sz1.toString()));
+            RESULT = new DeclNode(id, new ArrayLiteralNode(l, lleft, lright), false, t, dims, idleft, idright);
+         :}
        | LOCAL tipo:t IDENT:id LBRACKET INT_LIT:sz1 RBRACKET LBRACKET INT_LIT:sz2 RBRACKET ENDL
          {: 
             List<Integer> dims = new ArrayList<>(); 
@@ -197,6 +227,13 @@ decl ::= LOCAL tipo:t IDENT:id ENDL
             RESULT = new DeclNode(id, null, false, t, dims, idleft, idright); 
          :}
        | LOCAL tipo:t IDENT:id LBRACKET INT_LIT:sz1 RBRACKET LBRACKET INT_LIT:sz2 RBRACKET ASSIGN LBRACE lista_init:l RBRACE ENDL
+         {:
+            List<Integer> dims = new ArrayList<>();
+            dims.add(Integer.parseInt(sz1.toString()));
+            dims.add(Integer.parseInt(sz2.toString()));
+            RESULT = new DeclNode(id, new ArrayLiteralNode(l, lleft, lright), false, t, dims, idleft, idright);
+         :}
+       | LOCAL tipo:t IDENT:id LBRACKET INT_LIT:sz1 RBRACKET LBRACKET INT_LIT:sz2 RBRACKET ARROW LBRACE lista_init:l RBRACE ENDL
          {:
             List<Integer> dims = new ArrayList<>();
             dims.add(Integer.parseInt(sz1.toString()));

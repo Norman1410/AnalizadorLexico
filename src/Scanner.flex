@@ -61,13 +61,14 @@ STRING     = \"([^\\\"\r\n]|{ESC})*\"
 "char"         { return tok(sym.CHAR); }
 "string"       { return tok(sym.STRING); }
 "boolean"      { return tok(sym.BOOLEAN); }
+"void"         { return tok(sym.VOID); }
 
 /* Delimitadores especiales del lenguaje */
-"\u00BF"       { return tok(sym.LPAR, yytext()); }   /* ¿ */
-"?"            { return tok(sym.RPAR, yytext()); }   /* ? */
+"\u00BF" | "("   { return tok(sym.LPAR, yytext()); }   /* ¿ o ( */
+"?" | ")"        { return tok(sym.RPAR, yytext()); }   /* ? o ) */
 
-"\u00A1"       { return tok(sym.LBRACE, yytext()); } /* ¡ */
-"!"            { return tok(sym.RBRACE, yytext()); } /* ! */
+"\u00A1" | "{"   { return tok(sym.LBRACE, yytext()); } /* ¡ o { */
+"!" | "}"        { return tok(sym.RBRACE, yytext()); } /* ! o } */
 
 /* Flecha y asignación */
 "->"           { return tok(sym.ARROW, yytext()); }
