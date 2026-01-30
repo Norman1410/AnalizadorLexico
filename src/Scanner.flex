@@ -59,7 +59,7 @@ STRING     = \"([^\\\"\r\n]|{ESC})*\"
 "int"          { return tok(sym.INT); }
 "float"        { return tok(sym.FLOAT); }
 "char"         { return tok(sym.CHAR); }
-"string"       { return tok(sym.STRING); }
+"string"       { return tok(sym.STRING_TYPE); }
 "boolean"      { return tok(sym.BOOLEAN); }
 "void"         { return tok(sym.VOID); }
 

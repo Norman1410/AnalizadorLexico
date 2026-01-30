@@ -28,6 +28,35 @@ public class ReturnNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
+        if (st == null)
+            return;
+
+        if (expression != null)
+            expression.validate(st);
+
+        String expectedType = st.getCurrentExpectedReturnType();
+
+        if (expectedType == null) {
+            st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                    "'return' solo puede usarse dentro de una función.");
+            return;
+        }
+
+        if ("main".equals(st.currentScope())) {
+            st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                    "No se permite 'return' dentro del bloque principal 'navidad'.");
+            return;
+        }
+        String actualType = (expression == null) ? "void" : expression.getType(st);
+
+        if ("error".equals(actualType) || "unknown".equals(actualType))
+            return;
+
+        if (!isCompatible(expectedType, actualType)) {
+            st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                    "Tipo de retorno incompatible. Se esperaba '" + expectedType + "' pero se obtuvo '" + actualType
+                    + "'.");
+        }
     }
 
     @Override

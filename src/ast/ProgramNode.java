@@ -81,13 +81,19 @@ public class ProgramNode extends ASTNode {
         if (functions != null) {
             for (ASTNode f : functions) {
                 if (f instanceof FunctionNode fn) {
+                    List<String> pTypes = new ArrayList<>();
+                    if (fn.getParams() != null) {
+                        for (ParamNode p : fn.getParams())
+                            pTypes.add(p.getType());
+                    }
                     st.declare(new semantics.SymbolInfo(
                             fn.getName(),
                             fn.getReturnType(),
                             semantics.SymbolKind.FUNCTION,
                             fn.getLine(),
                             fn.getColumn(),
-                            java.util.Collections.emptyList()));
+                            java.util.Collections.emptyList(),
+                            pTypes));
                 }
             }
         }
@@ -380,6 +386,18 @@ public class ProgramNode extends ASTNode {
         } catch (Exception ignored) {
             return null;
         }
+    }
+
+    public List<ASTNode> getGlobalDecls() {
+        return declarations;
+    }
+
+    public List<ASTNode> getFunctions() {
+        return functions;
+    }
+
+    public ASTNode getMain() {
+        return mainBlock;
     }
 
     public void validateArraySemantics(semantics.SymbolTable st) {

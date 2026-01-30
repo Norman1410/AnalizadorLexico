@@ -34,28 +34,38 @@ public class AssignNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
+        if (st == null)
+            return;
+
         if (target != null)
             target.validate(st);
         if (expression != null)
             expression.validate(st);
 
-        if (target == null || expression == null)
-            return;
-
+        // Ensure target is an lvalue
         if (!(target instanceof VariableNode) && !(target instanceof ArrayAccessNode)) {
             st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
                     "La parte izquierda de una asignación debe ser un lvalue (variable o acceso a arreglo).");
             return;
         }
 
-        // verificar tipos
-        String targetType = target.getType(st);
-        String exprType = expression.getType(st);
+        String targetType = (target == null) ? "error" : target.getType(st);
+        String exprType = (expression == null) ? "error" : expression.getType(st);
 
         if ("error".equals(targetType) || "error".equals(exprType))
             return;
         if ("unknown".equals(targetType) || "unknown".equals(exprType))
             return;
+
+        if (target instanceof VariableNode) {
+            VariableNode vn = (VariableNode) target;
+            semantics.SymbolInfo info = st.lookup(vn.getName());
+            if (info != null && !info.dims.isEmpty() && !(expression instanceof ArrayLiteralNode)) {
+                st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                        "No se puede asignar un valor escalar a un arreglo '" + vn.getName() + "'.");
+                return;
+            }
+        }
 
         if (!isCompatible(targetType, exprType)) {
             st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +

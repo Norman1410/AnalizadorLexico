@@ -55,9 +55,9 @@ public class Main {
                     System.out.println("ÁRBOL SINTÁCTICO GENERADO");
                     program.print(0);
 
-// ======================
-// SEMÁNTICA (Proyecto 3)
-// ======================
+                    // ======================
+                    // SEMÁNTICA (Proyecto 3)
+                    // ======================
                     SymbolTable semTab = new SymbolTable();
 
                     if (parser.getSyntaxErrors() == 0) {
@@ -67,8 +67,22 @@ public class Main {
                         // Reporte semántico
                         if (semTab.getErrors().isEmpty()) {
                             System.out.println("\nSEMÁNTICA: OK (sin errores semánticos)");
+
+                            // ============================
+                            // GENERACIÓN MIPS (Proyecto 3)
+                            // ============================
+                            String rutaMips = rutaEntrada.substring(0, rutaEntrada.lastIndexOf('.')) + ".asm";
+                            try {
+                                semantics.MipsGenerator mipsGen = new semantics.MipsGenerator(semTab);
+                                mipsGen.generate(program, rutaMips);
+                                System.out.println("Código MIPS generado con éxito en: " + rutaMips);
+                            } catch (Exception e) {
+                                System.err.println("Error generando código MIPS: " + e.getMessage());
+                            }
+
                         } else {
-                            System.out.println("\nSEMÁNTICA: NO (errores semánticos = " + semTab.getErrors().size() + ")");
+                            System.out.println(
+                                    "\nSEMÁNTICA: NO (errores semánticos = " + semTab.getErrors().size() + ")");
                         }
 
                         // Imprimir tabla + errores (por scopes) desde la misma SymbolTable de semántica
@@ -91,12 +105,14 @@ public class Main {
                             System.out.println("\nRESULTADO FINAL: El programa ES válido (sintaxis y semántica).");
                         } else {
                             System.out.println("\nRESULTADO FINAL: El programa NO es válido.");
-                            System.out.println(" - Falló por semántica (errores semánticos: " + semTab.getErrors().size() + ")");
+                            System.out.println(
+                                    " - Falló por semántica (errores semánticos: " + semTab.getErrors().size() + ")");
                         }
                     } else {
                         // Si hay errores sintácticos, semántica se omitió
                         System.out.println("\nRESULTADO FINAL: El programa NO es válido.");
-                        System.out.println(" - Falló por sintaxis (errores sintácticos: " + parser.getSyntaxErrors() + ")");
+                        System.out.println(
+                                " - Falló por sintaxis (errores sintácticos: " + parser.getSyntaxErrors() + ")");
                     }
 
                     // Exportar AST a JSON

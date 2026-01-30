@@ -63,26 +63,27 @@ non terminal ASTNode top_element;
 non terminal ASTNode decl_global;
 non terminal MainNode main_nav;
 non terminal BlockNode bloque;
-non terminal List<ASTNode> sentencias;
-non terminal List<ASTNode> sentencia_list;
+non terminal List<ASTNode> sentencias, sentencia_list;
 non terminal ASTNode sentencia;
-non terminal List<ParamNode> params;
-non terminal ASTNode expr, literal, io, asign, decl;
-non terminal ASTNode decide_stmt, loop_stmt, for_stmt;
+non terminal List<ParamNode> params, lista_params;
+non terminal ParamNode param;
+non terminal ASTNode expr, literal, io, decl;
+non terminal ASTNode decide_stmt;
+non terminal LoopNode loop_stmt;
+non terminal ForNode for_stmt;
 non terminal List<ASTNode> casos;
 non terminal ASTNode cason, else_opt;
 non terminal List<ASTNode> funciones_list;
 non terminal FunctionNode funcion;
-non terminal List<ParamNode> lista_params;
 non terminal CallNode llamada;
 non terminal List<ASTNode> lista_expr, lista_init;
 non terminal String tipo;
-non terminal ParamNode param;
 non terminal ASTNode lvalue;
 non terminal ASTNode expr_arg;
 non terminal ASTNode init_elem;
 
 /*  Precedencia y Asociatividad  */
+precedence right ASSIGN, ARROW;
 precedence left OR;
 precedence left AND;
 precedence right NOT;
@@ -123,12 +124,12 @@ top_element ::= decl_global:d {: RESULT = d; :}
               | main_nav:m    {: RESULT = m; :}
               ;
 
-tipo ::= INT {: RESULT = "int"; :}
-       | FLOAT {: RESULT = "float"; :}
-       | CHAR {: RESULT = "char"; :}
-       | STRING {: RESULT = "string"; :}
-       | BOOLEAN {: RESULT = "boolean"; :}
-       | VOID {: RESULT = "void"; :}
+tipo ::= INT:i      {: RESULT = "int"; :}
+       | FLOAT:f    {: RESULT = "float"; :}
+       | CHAR:c     {: RESULT = "int"; :}
+       | BOOLEAN:b  {: RESULT = "boolean"; :}
+       | STRING:s   {: RESULT = "string"; :}
+       | VOID:v     {: RESULT = "void"; :}
        ;
 
 decl_global ::= WORLD tipo:t IDENT:id ENDL
@@ -182,7 +183,6 @@ sentencia_list ::= sentencia:s
                  ;
 
 sentencia ::= io:i {: RESULT = i; :}
-             | asign:a {: RESULT = a; :}
              | decl:d {: RESULT = d; :}
              | decide_stmt:ds {: RESULT = ds; :}
              | loop_stmt:ls {: RESULT = ls; :}
@@ -193,6 +193,8 @@ sentencia ::= io:i {: RESULT = i; :}
              | expr:e ENDL {: RESULT = e; :}
              | error ENDL {: RESULT = null; :}
              ;
+
+/* decl rules continue here */
 
 decl ::= LOCAL tipo:t IDENT:id ENDL
          {: RESULT = new DeclNode(id, null, false, t, new ArrayList<>(), idleft, idright); :}
@@ -281,9 +283,7 @@ loop_stmt ::= LOOP:l sentencias:s EXIT WHEN expr:e ENDL END LOOP ENDL
               {: RESULT = new LoopNode(new BlockNode(s, sleft, sright), e, lleft, lright); :}
             ;
 
-for_stmt ::= FOR:f LPAR decl:d ENDL expr:cond ENDL expr:step RPAR bloque:b
-             {: RESULT = new ForNode(d, cond, step, b, fleft, fright); :}
-           | FOR:f LPAR decl:d expr:cond ENDL expr:step RPAR bloque:b
+for_stmt ::= FOR:f LPAR decl:d expr:cond ENDL expr:step RPAR bloque:b
              {: RESULT = new ForNode(d, cond, step, b, fleft, fright); :}
            ;
 
@@ -311,6 +311,10 @@ lvalue ::= IDENT:id
 
 
 expr ::= lvalue:lv {: RESULT = lv; :}
+       | lvalue:l ARROW expr:e
+         {: RESULT = new AssignNode(l, e, lleft, lright); :}
+       | lvalue:l ASSIGN expr:e
+         {: RESULT = new AssignNode(l, e, lleft, lright); :}
        | literal:l {: RESULT = l; :}
        | expr:e1 PLUS  expr:e2 {: RESULT = new BinaryNode(e1, "+", e2, e1left, e1right); :}
        | expr:e1 MINUS expr:e2 {: RESULT = new BinaryNode(e1, "-", e2, e1left, e1right); :}
@@ -337,12 +341,6 @@ expr ::= lvalue:lv {: RESULT = lv; :}
        ;
 
 
-
-asign ::= lvalue:lv ARROW expr:e ENDL
-            {: RESULT = new AssignNode(lv, e, lvleft, lvright); :}
-        | lvalue:lv ASSIGN expr:e ENDL
-            {: RESULT = new AssignNode(lv, e, lvleft, lvright); :}
-        ;
 
 expr_arg ::= lvalue:lv {: RESULT = lv; :}
           | literal:l {: RESULT = l; :}

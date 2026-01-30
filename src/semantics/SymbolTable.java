@@ -218,4 +218,29 @@ public class SymbolTable {
             scopeNames.pop();
         }
     }
+
+    public String getCurrentExpectedReturnType() {
+
+        for (Map<String, SymbolInfo> s : scopes) {
+            if (s.containsKey("tipo")) {
+                SymbolInfo info = s.get("tipo");
+                if (info.type.startsWith("function:")) {
+                    return info.type.substring("function:".length());
+                }
+                if (info.type.startsWith("main:")) {
+                    return info.type.substring("main:".length());
+                }
+            }
+        }
+        return null;
+    }
+
+    public boolean isInLoop() {
+        for (String name : scopeNames) {
+            if (name.startsWith("loop@") || name.startsWith("for@")) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

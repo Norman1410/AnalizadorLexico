@@ -20,6 +20,13 @@ public class BreakNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
+        if (st == null)
+            return;
+
+        if (!st.isInLoop()) {
+            st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                    "'break' solo puede usarse dentro de un bucle (loop o for).");
+        }
     }
 
     @Override
