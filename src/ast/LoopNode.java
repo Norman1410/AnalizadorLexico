@@ -37,25 +37,51 @@ public class LoopNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
-        if (st == null)
-            return;
+        if (st == null) return;
 
-        st.openClosedScope("loop@" + getLine() + ":" + getColumn());
+        // Scope propio del loop (así el exit when "ve" las variables declaradas en el body)
+        st.enterScope("loop@" + getLine() + ":" + getColumn());
 
-        if (block != null)
-            block.validate(st);
+        BlockNode body = getBody();
+        if (body != null && body.getStatements() != null) {
+            for (ASTNode stmt : body.getStatements()) {
+                if (stmt == null) continue;
 
-        if (exitCondition != null) {
-            exitCondition.validate(st);
-            String t = exitCondition.getType(st);
-            if (!"error".equals(t) && !"unknown".equals(t) && !"boolean".equals(t)) {
-                st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
-                        "La condición de 'exit when' debe ser boolean, pero se obtuvo '" + t + "'.");
+                // Igual que BlockNode: declarar primero si es DeclNode
+                if (stmt instanceof DeclNode d) {
+                    st.declare(new semantics.SymbolInfo(
+                            d.getName(),
+                            d.getTypeName(),
+                            semantics.SymbolKind.LOCAL_VAR,
+                            d.getLine(),
+                            d.getColumn(),
+                            d.getDims()
+                    ));
+
+                    // Validar initializer si existe
+                    ASTNode init = d.getInitializer();
+                    if (init != null) init.validate(st);
+
+                } else {
+                    stmt.validate(st);
+                }
             }
         }
 
-        st.closeViewScope();
+        // Validar exit when dentro del mismo scope del loop
+        if (exitCondition != null) {
+            exitCondition.validate(st);
+            String t = exitCondition.getType(st);
+            if (t != null && !t.equals("boolean") && !t.equals("error") && !t.equals("unknown")) {
+                st.addError("Exit when requiere condición boolean (line=" + (getLine() + 1) +
+                        ", col=" + (getColumn() + 1) + ")");
+            }
+        }
+
+        st.exitScope();
     }
+
+
 
     @Override
     public String getType(semantics.SymbolTable st) {

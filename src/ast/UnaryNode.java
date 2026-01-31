@@ -82,4 +82,16 @@ public class UnaryNode extends ASTNode {
 
         return t;
     }
+    public ASTNode getExpression() {
+        return expression;
+    }
+
+    public String getOperator() {
+        return operator;
+    }
+
+    public boolean isPrefix() {
+        return isPrefix;
+    }
+
 }

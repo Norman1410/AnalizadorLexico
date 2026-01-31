@@ -61,4 +61,30 @@ public class LiteralNode extends ASTNode {
         if (t.equals("int") || t.equals("float") || t.equals("string") || t.equals("char")) return t;
         return "unknown";
     }
+    public boolean isString() {
+        return "string".equalsIgnoreCase(type);
+    }
+
+    public boolean isInt() {
+        return "int".equalsIgnoreCase(type);
+    }
+
+    public String getStringValue() {
+        if (value == null) return "";
+        String s = String.valueOf(value);
+        // por si viene con comillas
+        if (s.startsWith("\"") && s.endsWith("\"") && s.length() >= 2) {
+            return s.substring(1, s.length() - 1);
+        }
+        return s;
+    }
+
+    public int getIntValue() {
+        if (value instanceof Integer i) return i;
+        if (value instanceof String s) {
+            try { return Integer.parseInt(s.replace("\"","").trim()); }
+            catch (Exception ignored) {}
+        }
+        return 0;
+    }
 }

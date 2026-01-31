@@ -49,8 +49,8 @@ public class DeclNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
-        if (st == null)
-            return;
+        if (st == null) return;
+        if (initializer != null) initializer.validate(st);
 
         String fullType = getFullType();
 
@@ -106,4 +106,7 @@ public class DeclNode extends ASTNode {
     public List<Integer> getDims() {
         return (dimensions == null) ? Collections.emptyList() : dimensions;
     }
+    public ASTNode getInitializer() { return initializer; }
+
 }
+

@@ -34,4 +34,9 @@ public class ShowNode extends ASTNode {
     public String getType(semantics.SymbolTable st) {
         return "void";
     }
+
+    public ASTNode getExpression() {
+        return expression;
+    }
+
 }

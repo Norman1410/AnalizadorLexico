@@ -38,20 +38,41 @@ public class BlockNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
-        if (st == null)
-            return;
+        if (st == null) return;
 
-        st.openClosedScope("block@" + getLine() + ":" + getColumn());
+        // Scope del bloque
+        st.enterScope("block@" + getLine() + ":" + getColumn());
 
         if (statements != null) {
-            for (ASTNode s : statements) {
-                if (s != null)
-                    s.validate(st);
+            for (ASTNode stmt : statements) {
+                if (stmt == null) continue;
+
+                // 1) Decl local: declarar en tabla ANTES de validar initializer
+                if (stmt instanceof DeclNode dn) {
+                    st.declare(new semantics.SymbolInfo(
+                            dn.getName(),
+                            dn.getTypeName(),
+                            semantics.SymbolKind.LOCAL_VAR,
+                            dn.getLine(),
+                            dn.getColumn(),
+                            dn.getDims()
+                    ));
+
+                    // validar initializer (si existe)
+                    ASTNode init = dn.getInitializer();
+                    if (init != null) init.validate(st);
+
+                    continue;
+                }
+
+                // 2) Todo lo demás
+                stmt.validate(st);
             }
         }
 
-        st.closeViewScope();
+        st.exitScope();
     }
+
 
     @Override
     public String getType(semantics.SymbolTable st) {

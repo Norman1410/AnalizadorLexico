@@ -58,12 +58,9 @@ public class ProgramNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
-        if (st == null)
-            return;
+        if (st == null) return;
 
-        // global abierto
-        st.enterScope("global");
-
+        // 1) Globales
         if (declarations != null) {
             for (ASTNode d : declarations) {
                 if (d instanceof DeclNode dn) {
@@ -73,19 +70,27 @@ public class ProgramNode extends ASTNode {
                             semantics.SymbolKind.GLOBAL_VAR,
                             dn.getLine(),
                             dn.getColumn(),
-                            dn.getDims()));
+                            dn.getDims()
+                    ));
+
+                    // validar initializer global si existiera
+                    ASTNode init = dn.getInitializer();
+                    if (init != null) init.validate(st);
                 }
             }
         }
 
+        // 2) Firmas de funciones en global (para CallNode)
         if (functions != null) {
             for (ASTNode f : functions) {
                 if (f instanceof FunctionNode fn) {
                     List<String> pTypes = new ArrayList<>();
                     if (fn.getParams() != null) {
-                        for (ParamNode p : fn.getParams())
-                            pTypes.add(p.getType());
+                        for (ParamNode p : fn.getParams()) {
+                            if (p != null) pTypes.add(p.getType());
+                        }
                     }
+
                     st.declare(new semantics.SymbolInfo(
                             fn.getName(),
                             fn.getReturnType(),
@@ -93,12 +98,13 @@ public class ProgramNode extends ASTNode {
                             fn.getLine(),
                             fn.getColumn(),
                             java.util.Collections.emptyList(),
-                            pTypes));
+                            pTypes
+                    ));
                 }
             }
         }
 
-        // scope + params + block
+        // 3) Validar funciones (ya abren su propio scope)
         if (functions != null) {
             for (ASTNode f : functions) {
                 if (f instanceof FunctionNode fn) {
@@ -107,13 +113,15 @@ public class ProgramNode extends ASTNode {
             }
         }
 
-        // 4) Validar main
+        // 4) Validar main (abre scope main)
         if (mainBlock != null) {
             mainBlock.validate(st);
         }
 
-        st.exitScope();
+        // OJO: aquí NO hagas st.exitScope();
     }
+
+
 
     @Override
     public String getType(semantics.SymbolTable st) {
@@ -122,6 +130,7 @@ public class ProgramNode extends ASTNode {
 
     public semantics.SymbolTable buildSymbolTable() {
         semantics.SymbolTable st = new semantics.SymbolTable();
+        st.enterScope("global");
 
         // 1) Globales
         if (declarations != null) {
@@ -228,23 +237,36 @@ public class ProgramNode extends ASTNode {
                 (mainBlock != null ? mainBlock.getColumn() : 0),
                 java.util.Collections.emptyList()));
 
-        BlockNode mb = firstNonNullBlock(
-                (BlockNode) callObject(mainBlock, "getBlock"),
-                (BlockNode) callObject(mainBlock, "getBody"),
-                (BlockNode) getObjectField(mainBlock, "block"),
-                (BlockNode) getObjectField(mainBlock, "body"));
+        BlockNode mb = null;
 
+        // Plan A: si es MainNode y tu clase tiene getBlock()
+        if (mainBlock instanceof MainNode mn) {
+            mb = mn.getBlock(); // <- ya retorna BlockNode o null
+        }
+
+        // Plan B: si Plan A no dio, intenta por reflexión (por si mainBlock no es MainNode)
+        if (mb == null) {
+            mb = firstNonNullBlock(
+                    (BlockNode) callObject(mainBlock, "getBlock"),
+                    (BlockNode) getObjectField(mainBlock, "block"),
+                    (BlockNode) getObjectField(mainBlock, "body")
+            );
+        }
+
+        // Recolectar UNA sola vez
         if (mb != null) {
             collectLocalsFromBlock(mb, st);
         }
 
-        st.exitScope();
+
+        st.exitScope(); // cierra main
 
         return st;
+
     }
 
     private void collectLocalsFromBlock(BlockNode b, semantics.SymbolTable st) {
-
+        if (b == null || st == null) return;
         st.enterScope("block@" + b.getLine() + ":" + b.getColumn());
 
         for (ASTNode stmt : b.getStatements()) {
@@ -402,4 +424,8 @@ public class ProgramNode extends ASTNode {
 
     public void validateArraySemantics(semantics.SymbolTable st) {
     }
+    public ASTNode getMainBlock() {
+        return mainBlock;
+    }
+
 }

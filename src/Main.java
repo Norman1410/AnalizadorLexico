@@ -58,10 +58,12 @@ public class Main {
                     // ======================
                     // SEMÁNTICA (Proyecto 3)
                     // ======================
-                    SymbolTable semTab = new SymbolTable();
+                    SymbolTable semTab = null;
 
                     if (parser.getSyntaxErrors() == 0) {
-                        // Recorre AST y aplica validate/getType en nodos
+
+                        // 1) Construir tabla (scopes + declaraciones)
+                        semTab = new SymbolTable();
                         program.validate(semTab);
 
                         // Reporte semántico
@@ -81,39 +83,36 @@ public class Main {
                             }
 
                         } else {
-                            System.out.println(
-                                    "\nSEMÁNTICA: NO (errores semánticos = " + semTab.getErrors().size() + ")");
+                            System.out.println("\nSEMÁNTICA: NO (errores semánticos = " + semTab.getErrors().size() + ")");
                         }
 
-                        // Imprimir tabla + errores (por scopes) desde la misma SymbolTable de semántica
+                        // 3) Imprimir tabla + exportar
                         System.out.println("\nTABLA DE SÍMBOLOS");
                         System.out.println(semTab.toPrettyStringByScope());
 
-                        // Exportar tabla de símbolos
                         try (PrintWriter stWriter = new PrintWriter(new FileWriter("symbol_table.txt"))) {
                             stWriter.print(semTab.toPrettyStringByScope());
                         }
                         System.out.println("Tabla de símbolos exportada a 'symbol_table.txt'");
+
                     } else {
                         System.out.println("\nSEMÁNTICA: omitida por errores sintácticos.");
                     }
 
-                    // Veredicto final
                     if (parser.getSyntaxErrors() == 0) {
-                        // Aquí sí evaluamos semántica
-                        if (semTab.getErrors().isEmpty()) {
+                        if (semTab != null && semTab.getErrors().isEmpty()) {
                             System.out.println("\nRESULTADO FINAL: El programa ES válido (sintaxis y semántica).");
                         } else {
                             System.out.println("\nRESULTADO FINAL: El programa NO es válido.");
-                            System.out.println(
-                                    " - Falló por semántica (errores semánticos: " + semTab.getErrors().size() + ")");
+                            if (semTab != null) {
+                                System.out.println(" - Falló por semántica (errores semánticos: " + semTab.getErrors().size() + ")");
+                            }
                         }
                     } else {
-                        // Si hay errores sintácticos, semántica se omitió
                         System.out.println("\nRESULTADO FINAL: El programa NO es válido.");
-                        System.out.println(
-                                " - Falló por sintaxis (errores sintácticos: " + parser.getSyntaxErrors() + ")");
+                        System.out.println(" - Falló por sintaxis (errores sintácticos: " + parser.getSyntaxErrors() + ")");
                     }
+
 
                     // Exportar AST a JSON
                     Map<String, Object> astJson = program.toJsonObject();

@@ -63,4 +63,9 @@ public class ReturnNode extends ASTNode {
     public String getType(semantics.SymbolTable st) {
         return "void";
     }
+
+    public ASTNode getExpression() {
+        return expression;
+    }
+
 }

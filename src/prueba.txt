@@ -1,58 +1,21 @@
-world int g endl
-world boolean flag endl
+coal navidad ¿ ? ¡
+    show ¿ "hola mundo" ? endl
+    show ¿ 5 ? endl
 
-navidad ¿ ? ¡
+    local int a = 10 endl
+    local int b = 20 endl
+    local int c = a + b * 2 - 3 endl
+    show ¿ c ? endl
 
-    local int a[2][2] = ¡ ¡1,2!, ¡3,4! ! endl
-    local int x = a[0][0] + a[1][1] endl
+    a -> a + 7 endl
+    show ¿ a ? endl
 
-    show x endl
+    local string s = "TEC" endl
+    local string t = "San Carlos" endl
+    show ¿ s ? endl
+    show ¿ t ? endl
 
-    decide of
-        true ->
-        ¡
-            local int x = 100 endl
-            local boolean flag = false endl
+    show ¿ (10 + 2) * 3 - 9 ? endl
 
-            show x endl
-            show flag endl
-        !
-        false ->
-        ¡
-            local int y = 50 endl
-            show y endl
-        !
-    end decide endl
-
-    loop
-        local int i = 0 endl
-        show i endl
-
-        decide of
-            i == 0 ->
-            ¡
-                local int z = 999 endl
-                show z endl
-            !
-        end decide endl
-
-        exit when i >= 0 endl
-    end loop endl
-
-    for ¿ local int j = 0 endl j < 3 endl ++j ?
-    ¡
-        local int x = j * 10 endl
-        show x endl
-
-        decide of
-            x > 10 ->
-            ¡
-                local boolean flag = true endl
-                show flag endl
-            !
-        end decide endl
-    !
-
-    show g endl
-    show flag endl
+    return endl
 !

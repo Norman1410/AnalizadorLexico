@@ -139,5 +139,16 @@ public class BinaryNode extends ASTNode {
             return "boolean";
         return t;
     }
+    public ASTNode getLeft() {
+        return left;
+    }
+
+    public ASTNode getRight() {
+        return right;
+    }
+
+    public String getOperator() {
+        return operator;
+    }
 
 }

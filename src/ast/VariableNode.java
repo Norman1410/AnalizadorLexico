@@ -38,6 +38,15 @@ public class VariableNode extends ASTNode {
     @Override
     public String getType(semantics.SymbolTable st) {
         semantics.SymbolInfo si = st.lookup(identifier);
-        return (si != null) ? si.type : "unknown";
+        if (si == null) return "unknown";
+
+        String t = si.type; // tipo base: int, float, string, boolean...
+        if (si.dims != null && !si.dims.isEmpty()) {
+            StringBuilder sb = new StringBuilder(t);
+            for (int i = 0; i < si.dims.size(); i++) sb.append("[]");
+            return sb.toString(); // ej: int[][] o int[]
+        }
+        return t;
     }
+
 }

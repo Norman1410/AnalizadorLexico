@@ -36,6 +36,7 @@ public class MainNode extends ASTNode {
         if (st == null) return;
 
         st.enterScope("main");
+
         st.declare(new semantics.SymbolInfo(
                 "tipo",
                 "main:void",
@@ -45,14 +46,26 @@ public class MainNode extends ASTNode {
                 java.util.Collections.emptyList()
         ));
 
-        if (block != null) block.validate(st);
+        BlockNode b = getBlock();
+        if (b != null) b.validate(st);
 
         st.exitScope();
     }
+
 
 
     @Override
     public String getType(semantics.SymbolTable st) {
         return "void";
     }
+
+    public BlockNode getBlock() {
+        return (block instanceof BlockNode) ? (BlockNode) block : null;
+    }
+
+
+    public boolean isCoal() {
+        return isCoal;
+    }
 }
+
