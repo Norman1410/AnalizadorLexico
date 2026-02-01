@@ -43,8 +43,8 @@ public class LiteralNode extends ASTNode {
         // es solo validar que el tipo exista
         String t = normalizeType(type);
         if (t.equals("unknown")) {
-            st.addError("Tipo de literal desconocido '" + type + "' (line=" + (getLine()+1) +
-                    ", col=" + (getColumn()+1) + ")");
+            st.addError("Tipo de literal desconocido '" + type + "' (line=" + (getLine() + 1) +
+                    ", col=" + (getColumn() + 1) + ")");
         }
     }
 
@@ -54,13 +54,18 @@ public class LiteralNode extends ASTNode {
     }
 
     private String normalizeType(String raw) {
-        if (raw == null) return "unknown";
+        if (raw == null)
+            return "unknown";
         String t = raw.trim().toLowerCase();
-        if (t.equals("bool")) return "boolean";
-        if (t.equals("boolean")) return "boolean";
-        if (t.equals("int") || t.equals("float") || t.equals("string") || t.equals("char")) return t;
+        if (t.equals("bool"))
+            return "boolean";
+        if (t.equals("boolean"))
+            return "boolean";
+        if (t.equals("int") || t.equals("float") || t.equals("string") || t.equals("char"))
+            return t;
         return "unknown";
     }
+
     public boolean isString() {
         return "string".equalsIgnoreCase(type);
     }
@@ -70,7 +75,8 @@ public class LiteralNode extends ASTNode {
     }
 
     public String getStringValue() {
-        if (value == null) return "";
+        if (value == null)
+            return "";
         String s = String.valueOf(value);
         // por si viene con comillas
         if (s.startsWith("\"") && s.endsWith("\"") && s.length() >= 2) {
@@ -80,10 +86,14 @@ public class LiteralNode extends ASTNode {
     }
 
     public int getIntValue() {
-        if (value instanceof Integer i) return i;
-        if (value instanceof String s) {
-            try { return Integer.parseInt(s.replace("\"","").trim()); }
-            catch (Exception ignored) {}
+        if (value instanceof Integer)
+            return (Integer) value;
+        if (value instanceof String) {
+            String s = (String) value;
+            try {
+                return Integer.parseInt(s.replace("\"", "").trim());
+            } catch (Exception ignored) {
+            }
         }
         return 0;
     }

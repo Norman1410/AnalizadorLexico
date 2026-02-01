@@ -32,4 +32,8 @@ public class GetNode extends ASTNode {
     public String getType(semantics.SymbolTable st) {
         return "void";
     }
+
+    public ASTNode getTarget() {
+        return target;
+    }
 }

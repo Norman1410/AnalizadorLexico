@@ -37,7 +37,8 @@ public class LoopNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
-        if (st == null) return;
+        if (st == null)
+            return;
 
         // Scope propio del loop
         st.enterScope("loop@" + getLine() + ":" + getColumn());
@@ -45,21 +46,23 @@ public class LoopNode extends ASTNode {
         BlockNode body = getBody();
         if (body != null && body.getStatements() != null) {
             for (ASTNode stmt : body.getStatements()) {
-                if (stmt == null) continue;
+                if (stmt == null)
+                    continue;
 
-                if (stmt instanceof DeclNode d) {
+                if (stmt instanceof DeclNode) {
+                    DeclNode dn = (DeclNode) stmt;
                     st.declare(new semantics.SymbolInfo(
-                            d.getName(),
-                            d.getTypeName(),
+                            dn.getName(),
+                            dn.getTypeName(),
                             semantics.SymbolKind.LOCAL_VAR,
-                            d.getLine(),
-                            d.getColumn(),
-                            d.getDims()
-                    ));
+                            dn.getLine(),
+                            dn.getColumn(),
+                            dn.getDims()));
 
                     // Validar initializer si existe
-                    ASTNode init = d.getInitializer();
-                    if (init != null) init.validate(st);
+                    ASTNode init = dn.getInitializer();
+                    if (init != null)
+                        init.validate(st);
 
                 } else {
                     stmt.validate(st);
@@ -80,8 +83,6 @@ public class LoopNode extends ASTNode {
         st.exitScope();
     }
 
-
-
     @Override
     public String getType(semantics.SymbolTable st) {
         return "void";
@@ -90,7 +91,6 @@ public class LoopNode extends ASTNode {
     public BlockNode getBody() {
         return (block instanceof BlockNode) ? (BlockNode) block : null;
     }
-
 
     public ASTNode getExitCondition() {
         return exitCondition;

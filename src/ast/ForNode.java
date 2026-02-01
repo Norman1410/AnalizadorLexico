@@ -92,4 +92,12 @@ public class ForNode extends ASTNode {
     public ASTNode getInit() {
         return init;
     }
+
+    public ASTNode getCondition() {
+        return condition;
+    }
+
+    public ASTNode getStep() {
+        return step;
+    }
 }

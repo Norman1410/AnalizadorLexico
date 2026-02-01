@@ -58,23 +58,25 @@ public class ProgramNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
-        if (st == null) return;
+        if (st == null)
+            return;
 
         // 1) Globales
         if (declarations != null) {
             for (ASTNode d : declarations) {
-                if (d instanceof DeclNode dn) {
+                if (d instanceof DeclNode) {
+                    DeclNode dn = (DeclNode) d;
                     st.declare(new semantics.SymbolInfo(
                             dn.getName(),
                             dn.getTypeName(),
                             semantics.SymbolKind.GLOBAL_VAR,
                             dn.getLine(),
                             dn.getColumn(),
-                            dn.getDims()
-                    ));
+                            dn.getDims()));
 
                     ASTNode init = dn.getInitializer();
-                    if (init != null) init.validate(st);
+                    if (init != null)
+                        init.validate(st);
                 }
             }
         }
@@ -82,11 +84,13 @@ public class ProgramNode extends ASTNode {
         // 2) Firmas de funciones en global (para CallNode)
         if (functions != null) {
             for (ASTNode f : functions) {
-                if (f instanceof FunctionNode fn) {
+                if (f instanceof FunctionNode) {
+                    FunctionNode fn = (FunctionNode) f;
                     List<String> pTypes = new ArrayList<>();
                     if (fn.getParams() != null) {
                         for (ParamNode p : fn.getParams()) {
-                            if (p != null) pTypes.add(p.getType());
+                            if (p != null)
+                                pTypes.add(p.getType());
                         }
                     }
 
@@ -97,8 +101,7 @@ public class ProgramNode extends ASTNode {
                             fn.getLine(),
                             fn.getColumn(),
                             java.util.Collections.emptyList(),
-                            pTypes
-                    ));
+                            pTypes));
                 }
             }
         }
@@ -106,7 +109,8 @@ public class ProgramNode extends ASTNode {
         // 3) Validar funciones (ya abren su propio scope)
         if (functions != null) {
             for (ASTNode f : functions) {
-                if (f instanceof FunctionNode fn) {
+                if (f instanceof FunctionNode) {
+                    FunctionNode fn = (FunctionNode) f;
                     fn.validate(st);
                 }
             }
@@ -117,8 +121,6 @@ public class ProgramNode extends ASTNode {
             mainBlock.validate(st);
         }
     }
-
-
 
     @Override
     public String getType(semantics.SymbolTable st) {
@@ -132,7 +134,8 @@ public class ProgramNode extends ASTNode {
         // 1) Globales
         if (declarations != null) {
             for (ASTNode n : declarations) {
-                if (n instanceof DeclNode d) {
+                if (n instanceof DeclNode) {
+                    DeclNode d = (DeclNode) n;
                     st.declare(new semantics.SymbolInfo(
                             d.getName(),
                             d.getTypeName(),
@@ -236,8 +239,8 @@ public class ProgramNode extends ASTNode {
 
         BlockNode mb = null;
 
-
-        if (mainBlock instanceof MainNode mn) {
+        if (mainBlock instanceof MainNode) {
+            MainNode mn = (MainNode) mainBlock;
             mb = mn.getBlock(); // ya retorna BlockNode o null
         }
 
@@ -245,15 +248,13 @@ public class ProgramNode extends ASTNode {
             mb = firstNonNullBlock(
                     (BlockNode) callObject(mainBlock, "getBlock"),
                     (BlockNode) getObjectField(mainBlock, "block"),
-                    (BlockNode) getObjectField(mainBlock, "body")
-            );
+                    (BlockNode) getObjectField(mainBlock, "body"));
         }
 
         // Recolectar UNA sola vez
         if (mb != null) {
             collectLocalsFromBlock(mb, st);
         }
-
 
         st.exitScope(); // cierra main
 
@@ -262,13 +263,15 @@ public class ProgramNode extends ASTNode {
     }
 
     private void collectLocalsFromBlock(BlockNode b, semantics.SymbolTable st) {
-        if (b == null || st == null) return;
+        if (b == null || st == null)
+            return;
         st.enterScope("block@" + b.getLine() + ":" + b.getColumn());
 
         for (ASTNode stmt : b.getStatements()) {
 
             // Declaraciones locales
-            if (stmt instanceof DeclNode d) {
+            if (stmt instanceof DeclNode) {
+                DeclNode d = (DeclNode) stmt;
                 st.declare(new semantics.SymbolInfo(
                         d.getName(),
                         d.getTypeName(),
@@ -279,34 +282,41 @@ public class ProgramNode extends ASTNode {
             }
 
             // Bloque anidado
-            else if (stmt instanceof BlockNode bb) {
+            else if (stmt instanceof BlockNode) {
+                BlockNode bb = (BlockNode) stmt;
                 collectLocalsFromBlock(bb, st);
             }
 
             // Decide
-            else if (stmt instanceof DecideNode dn) {
+            else if (stmt instanceof DecideNode) {
+                DecideNode dn = (DecideNode) stmt;
                 for (ASTNode c : dn.getCases()) {
-                    if (c instanceof CaseNode cn) {
+                    if (c instanceof CaseNode) {
+                        CaseNode cn = (CaseNode) c;
                         collectLocalsFromBlock(cn.getBlock(), st);
                     }
                 }
-                if (dn.getElseBlock() instanceof BlockNode eb) {
+                if (dn.getElseBlock() instanceof BlockNode) {
+                    BlockNode eb = (BlockNode) dn.getElseBlock();
                     collectLocalsFromBlock(eb, st);
                 }
             }
 
             // Loop
-            else if (stmt instanceof LoopNode ln) {
+            else if (stmt instanceof LoopNode) {
+                LoopNode ln = (LoopNode) stmt;
                 collectLocalsFromBlock(ln.getBody(), st);
             }
 
             // For
-            else if (stmt instanceof ForNode fn) {
+            else if (stmt instanceof ForNode) {
+                ForNode fn = (ForNode) stmt;
 
                 // Scope propio del for
                 st.enterScope("for@" + fn.getLine() + ":" + fn.getColumn());
 
-                if (fn.getInit() instanceof DeclNode d) {
+                if (fn.getInit() instanceof DeclNode) {
+                    DeclNode d = (DeclNode) fn.getInit();
                     st.declare(new semantics.SymbolInfo(
                             d.getName(),
                             d.getTypeName(),
@@ -420,6 +430,7 @@ public class ProgramNode extends ASTNode {
 
     public void validateArraySemantics(semantics.SymbolTable st) {
     }
+
     public ASTNode getMainBlock() {
         return mainBlock;
     }
