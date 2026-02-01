@@ -66,7 +66,7 @@ public class Main {
                         semTab = new SymbolTable();
                         program.validate(semTab);
 
-                        // Reporte semántico
+                           // Reporte semántico
                         if (semTab.getErrors().isEmpty()) {
                             System.out.println("\nSEMÁNTICA: OK (sin errores semánticos)");
 

@@ -36,4 +36,9 @@ public class ExitWhenNode extends ASTNode {
     public String getType(semantics.SymbolTable st) {
         return "void";
     }
+
+    public ASTNode getCondition() {
+        return condition;
+    }
+
 }

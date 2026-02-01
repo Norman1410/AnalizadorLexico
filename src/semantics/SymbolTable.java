@@ -4,17 +4,16 @@ import java.util.*;
 
 public class SymbolTable {
 
-    // Pila de scopes (cada scope tiene su propio mapa name -> SymbolInfo)
+    // Pila de scopes (cada scope tiene su propio mapa name SymbolInfo)
     private final Deque<Map<String, SymbolInfo>> scopes = new ArrayDeque<>();
     private final Deque<String> scopeNames = new ArrayDeque<>();
-    // Scopes ya cerrados (para poder imprimirlos luego)
+    // Scopes ya cerrados
     private final List<String> closedScopeNames = new ArrayList<>();
     private final List<Map<String, SymbolInfo>> closedScopes = new ArrayList<>();
 
     private final List<String> errors = new ArrayList<>();
 
     public SymbolTable() {
-        // opcional: arrancar con global listo
         enterScope("global");
     }
 
@@ -72,7 +71,7 @@ public class SymbolTable {
     public Map<String, SymbolInfo> getAll() {
         Map<String, SymbolInfo> out = new LinkedHashMap<>();
 
-        // 1) Primero imprimir scopes que ya se cerraron (en orden de cierre)
+        // 1) Primero imprimir scopes que ya se cerraron
         for (int i = 0; i < closedScopes.size(); i++) {
             String scName = closedScopeNames.get(i);
             Map<String, SymbolInfo> sc = closedScopes.get(i);
@@ -81,7 +80,7 @@ public class SymbolTable {
             }
         }
 
-        // 2) Luego los scopes que siguen abiertos (ej: global)
+        // 2) Luego los scopes que siguen abiertos
         List<Map<String, SymbolInfo>> list = new ArrayList<>(scopes);
         List<String> names = new ArrayList<>(scopeNames);
         Collections.reverse(list);
@@ -126,7 +125,7 @@ public class SymbolTable {
     public String toPrettyStringByScope() {
         StringBuilder sb = new StringBuilder();
 
-        // 1) Scopes cerrados primero (funciones, etc.)
+        // 1) Scopes cerrados primero - funciones, etc.
         for (int i = 0; i < closedScopes.size(); i++) {
             String scName = closedScopeNames.get(i);
             sb.append("\nTabla de símbolo : ").append(scName).append("\n");
@@ -151,7 +150,7 @@ public class SymbolTable {
             }
         }
 
-        // 2) Scopes abiertos al final (global, main si no lo cerraste)
+        // 2) Scopes abiertos al final
         List<Map<String, SymbolInfo>> list = new ArrayList<>(scopes);
         List<String> names = new ArrayList<>(scopeNames);
         Collections.reverse(list);
@@ -190,14 +189,14 @@ public class SymbolTable {
         return sb.toString();
     }
 
-    // Abre un scope que ya fue cerrado (para validación semántica).
-    // NO crea un mapa nuevo: reusa el que está en closedScopes para que lookup()
-    // funcione.
+    // Abre un scope que ya fue cerrado para validación semántica
+    // No crea un mapa nuevo reusa el que está en closedScopes para que lookup  funcione
+
     public void openClosedScope(String name) {
         if (name == null)
             name = "scope";
 
-        // Buscar el ÚLTIMO scope con ese nombre (por si acaso)
+        // Buscar el ÚLTIMO scope con ese nombre por si acaso
         for (int i = closedScopeNames.size() - 1; i >= 0; i--) {
             if (name.equals(closedScopeNames.get(i))) {
                 scopeNames.push(name);

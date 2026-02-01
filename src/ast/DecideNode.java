@@ -95,4 +95,9 @@ public class DecideNode extends ASTNode {
     public ASTNode getElseBlock() {
         return elseBlock;
     }
+
+    public ASTNode getCondition() {
+        return expression;
+    }
+
 }

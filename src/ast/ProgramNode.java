@@ -73,7 +73,6 @@ public class ProgramNode extends ASTNode {
                             dn.getDims()
                     ));
 
-                    // validar initializer global si existiera
                     ASTNode init = dn.getInitializer();
                     if (init != null) init.validate(st);
                 }
@@ -117,8 +116,6 @@ public class ProgramNode extends ASTNode {
         if (mainBlock != null) {
             mainBlock.validate(st);
         }
-
-        // OJO: aquí NO hagas st.exitScope();
     }
 
 
@@ -239,12 +236,11 @@ public class ProgramNode extends ASTNode {
 
         BlockNode mb = null;
 
-        // Plan A: si es MainNode y tu clase tiene getBlock()
+
         if (mainBlock instanceof MainNode mn) {
-            mb = mn.getBlock(); // <- ya retorna BlockNode o null
+            mb = mn.getBlock(); // ya retorna BlockNode o null
         }
 
-        // Plan B: si Plan A no dio, intenta por reflexión (por si mainBlock no es MainNode)
         if (mb == null) {
             mb = firstNonNullBlock(
                     (BlockNode) callObject(mainBlock, "getBlock"),

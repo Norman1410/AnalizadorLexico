@@ -1,21 +1,45 @@
-coal navidad ¿ ? ¡
-    show ¿ "hola mundo" ? endl
-    show ¿ 5 ? endl
+world int G endl
+world string MSG endl
 
-    local int a = 10 endl
-    local int b = 20 endl
-    local int c = a + b * 2 - 3 endl
-    show ¿ c ? endl
+gift int sumArr ¿ int a, int b ? ¡
+    local int m[2][3] endl
+    m[1][2] -> a + b endl
+    return m[1][2] endl
+!
 
-    a -> a + 7 endl
-    show ¿ a ? endl
-
-    local string s = "TEC" endl
-    local string t = "San Carlos" endl
-    show ¿ s ? endl
-    show ¿ t ? endl
-
-    show ¿ (10 + 2) * 3 - 9 ? endl
-
+gift void banner ¿ ? ¡
+    show ¿ MSG ? endl
     return endl
+    show ¿ "NO SALE" ? endl
+!
+
+navidad ¿ ? ¡
+    G -> 10 endl
+    MSG -> "hola" endl
+
+    banner ¿ ? endl
+
+    local int x endl
+    x -> sumArr ¿ 2, 3 ? endl
+    show ¿ x ? endl
+
+    decide of
+        x < 6 ->
+        ¡
+            show ¿ "menor" ? endl
+        !
+        else ->
+        ¡
+            show ¿ "no menor" ? endl
+        !
+    end decide endl
+
+    local int i endl
+    i -> 0 endl
+
+    loop
+        show ¿ i ? endl
+        i -> i + 1 endl
+        exit when ¿ i >= 3 ? endl
+    end loop endl
 !

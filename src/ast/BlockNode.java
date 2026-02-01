@@ -58,14 +58,14 @@ public class BlockNode extends ASTNode {
                             dn.getDims()
                     ));
 
-                    // validar initializer (si existe)
+                    // validar initializer si es que existe
                     ASTNode init = dn.getInitializer();
                     if (init != null) init.validate(st);
 
                     continue;
                 }
 
-                // 2) Todo lo demás
+                // 2) Toodo lo demás
                 stmt.validate(st);
             }
         }

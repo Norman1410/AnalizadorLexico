@@ -40,7 +40,7 @@ public class LiteralNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
-        // nada grave: solo validar que el tipo exista
+        // es solo validar que el tipo exista
         String t = normalizeType(type);
         if (t.equals("unknown")) {
             st.addError("Tipo de literal desconocido '" + type + "' (line=" + (getLine()+1) +

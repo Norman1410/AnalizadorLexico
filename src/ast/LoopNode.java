@@ -39,7 +39,7 @@ public class LoopNode extends ASTNode {
     public void validate(semantics.SymbolTable st) {
         if (st == null) return;
 
-        // Scope propio del loop (así el exit when "ve" las variables declaradas en el body)
+        // Scope propio del loop
         st.enterScope("loop@" + getLine() + ":" + getColumn());
 
         BlockNode body = getBody();
@@ -47,7 +47,6 @@ public class LoopNode extends ASTNode {
             for (ASTNode stmt : body.getStatements()) {
                 if (stmt == null) continue;
 
-                // Igual que BlockNode: declarar primero si es DeclNode
                 if (stmt instanceof DeclNode d) {
                     st.declare(new semantics.SymbolInfo(
                             d.getName(),
@@ -91,4 +90,10 @@ public class LoopNode extends ASTNode {
     public BlockNode getBody() {
         return (block instanceof BlockNode) ? (BlockNode) block : null;
     }
+
+
+    public ASTNode getExitCondition() {
+        return exitCondition;
+    }
+
 }

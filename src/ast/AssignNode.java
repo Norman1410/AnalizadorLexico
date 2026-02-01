@@ -42,7 +42,6 @@ public class AssignNode extends ASTNode {
         if (expression != null)
             expression.validate(st);
 
-        // Ensure target is an lvalue
         if (!(target instanceof VariableNode) && !(target instanceof ArrayAccessNode)) {
             st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
                     "La parte izquierda de una asignación debe ser un lvalue (variable o acceso a arreglo).");

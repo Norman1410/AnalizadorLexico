@@ -40,11 +40,12 @@ public class VariableNode extends ASTNode {
         semantics.SymbolInfo si = st.lookup(identifier);
         if (si == null) return "unknown";
 
-        String t = si.type; // tipo base: int, float, string, boolean...
+        // tipo base: int, float, string, boolean...
+        String t = si.type;
         if (si.dims != null && !si.dims.isEmpty()) {
             StringBuilder sb = new StringBuilder(t);
             for (int i = 0; i < si.dims.size(); i++) sb.append("[]");
-            return sb.toString(); // ej: int[][] o int[]
+            return sb.toString();
         }
         return t;
     }

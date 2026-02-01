@@ -58,4 +58,9 @@ public class CaseNode extends ASTNode {
     public BlockNode getBlock() {
         return (block instanceof BlockNode) ? (BlockNode) block : null;
     }
+
+    public ASTNode getExpression() {
+        return expression;
+    }
+
 }
