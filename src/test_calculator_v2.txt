@@ -1,0 +1,78 @@
+| =========================================
+| Calculadora simple para probar el compilador
+| - get: lee int/float
+| - show: imprime string/int/float/bool
+| - decide of: selección de operación
+| - loop + exit when: repetir hasta salir
+| =========================================
+
+world string banner = "=== CALCULADORA ===" endl
+
+gift bool isEven ¿ int n ? ¡
+    return ¿ n % 2 == 0 ? endl
+!
+
+coal navidad ¿ ? ¡
+    local int op = 0 endl
+    local float a = 0.0 endl
+    local float b = 0.0 endl
+    local float res = 0.0 endl
+    local bool par = false endl
+
+    show banner endl
+
+    loop
+        show "Menu: 1=+, 2=-, 3=*, 4=/, 0=salir" endl
+        show "Operacion:" endl
+        get op endl
+
+        decide of
+            op != 0 -> ¡
+                show "a (float):" endl
+                get a endl
+
+                show "b (float):" endl
+                get b endl
+
+                decide of
+                    op == 1 -> ¡
+                        res = a + b endl
+                        show "a + b =" endl
+                        show res endl
+                    !
+                    op == 2 -> ¡
+                        res = a - b endl
+                        show "a - b =" endl
+                        show res endl
+                    !
+                    op == 3 -> ¡
+                        res = a * b endl
+                        show "a * b =" endl
+                        show res endl
+                    !
+                    ¿ op == 4 ? @ ¿ b != 0.0 ? -> ¡
+                        res = a / b endl
+                        show "a / b =" endl
+                        show res endl
+                    !
+                    op == 4 -> ¡
+                        show "Error: division por cero" endl
+                    !
+                    else -> ¡
+                        show "Opcion invalida" endl
+                    !
+                end decide endl
+
+                par = isEven ¿ op ? endl
+                show "op es par? (bool):" endl
+                show par endl
+            !
+            else -> ¡
+                | Si op == 0, no hacemos nada y salimos en el exit when
+            !
+        end decide endl
+
+        exit when op == 0 endl
+
+    end loop endl
+!

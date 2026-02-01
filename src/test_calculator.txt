@@ -1,0 +1,195 @@
+| ===========================================
+|  CALCULADORA SIMPLE (INT y FLOAT)
+|  Prueba: world/local, gift, coal/navidad,
+|          decide of, loop/exit when, endl,
+|          paréntesis ¿ ?, operadores + - * / // % ^ @ ~ Σ
+| ===========================================
+
+world int g_seed = 7 endl
+
+gift bool isEven ¿ int n ? ¡
+    return ¿ n % 2 == 0 ? endl
+!
+
+gift int mixOps ¿ int n , int seed ? ¡
+    local int r endl
+    r = ¿n + seed? * ¿n - seed? + ¿n % 3? endl
+    return r endl
+!
+
+gift float mixFloat ¿ float f , float k ? ¡
+    local float r endl
+    r = f / 2.0 + k * 3.5 - 1.25 endl
+    return r endl
+!
+
+coal navidad ¿ ? ¡
+    local int op endl
+    local int a endl
+    local int b endl
+    local int rInt endl
+
+    local float x endl
+    local float y endl
+    local float rFlt endl
+
+    local bool ok endl
+
+    show "=== CALCULADORA ===" endl
+    show "Opciones: 1:+ 2:- 3:* 4:// 5:% 6:^ 7:f+ 8:f/ 9:mixOps 10:mixFloat 0:salir" endl
+
+    loop
+        show "op=" endl
+        get op endl
+        decide of
+            op == 0 -> ¡ !
+            op == 1 -> ¡
+                show "a=" endl
+                get a endl
+                show "b=" endl
+                get b endl
+
+                rInt = a + b endl
+                show "res=" endl
+                show rInt endl
+
+                ok = isEven¿a? @ isEven¿b? endl
+                show "ambosPares=" endl
+                show ok endl
+
+                show "negado(Σ)=" endl
+                show Σ ok endl
+            !
+
+            op == 2 -> ¡
+                show "a=" endl
+                get a endl
+                show "b=" endl
+                get b endl
+
+                rInt = a - b endl
+                show "res=" endl
+                show rInt endl
+            !
+
+            op == 3 -> ¡
+                show "a=" endl
+                get a endl
+                show "b=" endl
+                get b endl
+
+                rInt = a * b endl
+                show "res=" endl
+                show rInt endl
+            !
+
+            op == 4 -> ¡
+                show "a=" endl
+                get a endl
+                show "b=" endl
+                get b endl
+
+                decide of
+                    b == 0 -> ¡
+                        show "ERROR: division por 0" endl
+                    !
+                    else -> ¡
+                        rInt = a // b endl
+                        show "res=" endl
+                        show rInt endl
+                    !
+                end decide endl
+            !
+
+            op == 5 -> ¡
+                show "a=" endl
+                get a endl
+                show "b=" endl
+                get b endl
+
+                decide of
+                    b == 0 -> ¡
+                        show "ERROR: modulo por 0" endl
+                    !
+                    else -> ¡
+                        rInt = a % b endl
+                        show "res=" endl
+                        show rInt endl
+                    !
+                end decide endl
+            !
+
+            op == 6 -> ¡
+                show "base(a)=" endl
+                get a endl
+                show "exp(b)=" endl
+                get b endl
+
+                rInt = a ^ b endl
+                show "res=" endl
+                show rInt endl
+            !
+
+            op == 7 -> ¡
+                show "x(float)=" endl
+                get x endl
+                show "y(float)=" endl
+                get y endl
+
+                rFlt = x + y endl
+                show "res=" endl
+                show rFlt endl
+            !
+
+            op == 8 -> ¡
+                show "x(float)=" endl
+                get x endl
+                show "y(float)=" endl
+                get y endl
+
+                decide of
+                    y == 0.0 -> ¡
+                        show "ERROR: division float por 0" endl
+                    !
+                    else -> ¡
+                        rFlt = x / y endl
+                        show "res=" endl
+                        show rFlt endl
+                    !
+                end decide endl
+            !
+
+            op == 9 -> ¡
+                show "n(int)=" endl
+                get a endl
+
+                rInt = mixOps¿ a , g_seed ? endl
+                show "mixOps(n,g_seed)=" endl
+                show rInt endl
+
+                ok = isEven¿rInt? ~ isEven¿a? endl
+                show "par(res) OR par(n)=" endl
+                show ok endl
+            !
+
+            op == 10 -> ¡
+                show "f(float)=" endl
+                get x endl
+
+                rFlt = mixFloat¿ x , 2.0 ? endl
+                show "mixFloat(f,2.0)=" endl
+                show rFlt endl
+            !
+
+            else -> ¡
+                show "op invalida" endl
+            !
+
+        end decide endl
+        
+        exit when op == 0 endl
+
+    end loop endl
+
+    show "FIN" endl
+!

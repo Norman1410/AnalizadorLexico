@@ -569,9 +569,8 @@ public class MipsGenerator {
                 type = "int";
             }
 
-            loadVarToT0(name);
-
             if ("string".equalsIgnoreCase(type)) {
+                loadVarToT0(name);
                 // imprime el string apuntado por $t0
                 textSection.append("    li $v0, 4\n");
                 textSection.append("    move $a0, $t0\n");
@@ -581,6 +580,7 @@ public class MipsGenerator {
             }
 
             if ("char".equalsIgnoreCase(type)) {
+                loadVarToT0(name);
                 textSection.append("    li $v0, 11\n");
                 textSection.append("    move $a0, $t0\n");
                 textSection.append("    syscall\n");
@@ -598,6 +598,7 @@ public class MipsGenerator {
             }
 
             // int (default)
+            loadVarToT0(name);
             textSection.append("    li $v0, 1\n");
             textSection.append("    move $a0, $t0\n");
             textSection.append("    syscall\n");
@@ -1677,9 +1678,6 @@ public class MipsGenerator {
         if (body != null)
             emitBlock(body);
 
-        textSection.append("    li $v0, 0\n");
-        textSection.append("    j ").append(exitLbl).append("\n");
-
         // Epílogo
         textSection.append(exitLbl).append(":\n");
 
@@ -1711,8 +1709,13 @@ public class MipsGenerator {
                 continue;
 
             // arg i está en: ($sp + argsBase + i*4)
-            textSection.append("    lw $t0, ").append(argsBase + i * 4).append("($sp)\n");
-            textSection.append("    sw $t0, ").append(dstOff).append("($s0)\n");
+            if ("float".equalsIgnoreCase(p.getType())) {
+                textSection.append("    lwc1 $f0, ").append(argsBase + i * 4).append("($sp)\n");
+                textSection.append("    swc1 $f0, ").append(dstOff).append("($s0)\n");
+            } else {
+                textSection.append("    lw $t0, ").append(argsBase + i * 4).append("($sp)\n");
+                textSection.append("    sw $t0, ").append(dstOff).append("($s0)\n");
+            }
         }
     }
 
@@ -1858,9 +1861,7 @@ public class MipsGenerator {
         List<ASTNode> args = cn.getArguments();
         int n = (args == null) ? 0 : args.size();
 
-        // En un backend decente, deberíamos saber los tipos de los parámetros.
-        // Por ahora, si es float, emitExprFloat. Si no, emitExprInt.
-        for (int i = 0; i < n; i++) {
+        for (int i = n - 1; i >= 0; i--) {
             ASTNode a = args.get(i);
             String type = getNodeType(a);
             if ("float".equalsIgnoreCase(type)) {

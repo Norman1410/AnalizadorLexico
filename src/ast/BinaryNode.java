@@ -81,8 +81,6 @@ public class BinaryNode extends ASTNode {
             }
             if (op.equals("//"))
                 return "int";
-            if (op.equals("^"))
-                return "float";
 
             // Promoción estándar para + - * /
             if (lt.equals("float") || rt.equals("float"))
