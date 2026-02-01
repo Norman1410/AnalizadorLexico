@@ -64,7 +64,7 @@ public class DeclNode extends ASTNode {
 
         st.declare(new semantics.SymbolInfo(
                 identifier,
-                fullType,
+                varType,
                 isGlobal ? semantics.SymbolKind.GLOBAL_VAR : semantics.SymbolKind.LOCAL_VAR,
                 getLine(),
                 getColumn(),

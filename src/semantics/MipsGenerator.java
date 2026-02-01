@@ -667,6 +667,8 @@ public class MipsGenerator {
         ASTNode cond = ln.getExitCondition();
         if (cond != null) {
             emitCondBranch(cond, loopEnd, loopStart);
+        } else {
+            textSection.append("    j ").append(loopStart).append("\n");
         }
 
         textSection.append("    j ").append(loopStart).append("\n");

@@ -3,7 +3,7 @@ world string MSG endl
 
 gift int sumArr ¿ int a, int b ? ¡
     local int m[2][3] endl
-    m[1][2] -> a + b endl
+    m[1][2] = a + b endl
     return m[1][2] endl
 !
 
@@ -14,13 +14,13 @@ gift void banner ¿ ? ¡
 !
 
 navidad ¿ ? ¡
-    G -> 10 endl
-    MSG -> "hola" endl
+    G = 10 endl
+    MSG = "hola" endl
 
     banner ¿ ? endl
 
     local int x endl
-    x -> sumArr ¿ 2, 3 ? endl
+    x = sumArr ¿ 2, 3 ? endl
     show ¿ x ? endl
 
     decide of
@@ -35,11 +35,11 @@ navidad ¿ ? ¡
     end decide endl
 
     local int i endl
-    i -> 0 endl
+    i = 0 endl
 
     loop
         show ¿ i ? endl
-        i -> i + 1 endl
+        i = i + 1 endl
         exit when ¿ i >= 3 ? endl
     end loop endl
 !
