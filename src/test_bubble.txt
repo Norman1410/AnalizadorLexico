@@ -1,0 +1,89 @@
+| ============================
+| Bubble Sort (int[1][8])
+| - Lee 8 enteros
+| - Los ordena ascendente
+| - Imprime antes y después
+| ============================
+
+world int N = 8 endl
+world int data[1][8] = ¡ ¡ 0, 0, 0, 0, 0, 0, 0, 0 ! ! endl
+
+coal navidad ¿ ? ¡
+
+    local int i = 0 endl
+    local int j = 0 endl
+    local int tmp = 0 endl
+    local int lim = 0 endl
+    local int x = 0 endl
+
+    show "Ingrese 8 enteros:" endl
+
+    i = 0 endl
+    loop
+        decide of
+            i < N -> ¡
+                get x endl
+                data[0][i] = x endl
+                i = i + 1 endl
+            !
+        end decide endl
+        exit when i >= N endl
+    end loop endl
+
+
+    show "Antes:" endl
+    i = 0 endl
+    loop
+        decide of
+             i < N -> ¡
+                show data[0][i] endl
+                i = i + 1 endl
+             !
+        end decide endl
+        exit when i >= N endl
+    end loop endl
+
+
+    i = 0 endl
+    loop
+        decide of
+            i < (N - 1) -> ¡
+                lim = (N - 1) - i endl
+                j = 0 endl
+
+                loop
+                    decide of
+                        j < lim -> ¡
+                            decide of
+                                data[0][j] > data[0][j + 1] -> ¡
+                                    tmp = data[0][j] endl
+                                    data[0][j] = data[0][j + 1] endl
+                                    data[0][j + 1] = tmp endl
+                                !
+                            end decide endl
+                            j = j + 1 endl
+                        !
+                    end decide endl
+                    exit when j >= lim endl
+                end loop endl
+
+                i = i + 1 endl
+            !
+        end decide endl
+        exit when i >= (N - 1) endl
+    end loop endl
+
+
+    show "Despues:" endl
+    i = 0 endl
+    loop
+        decide of
+            i < N -> ¡
+                show data[0][i] endl
+                i = i + 1 endl
+            !
+        end decide endl
+        exit when i >= N endl
+    end loop endl
+
+!

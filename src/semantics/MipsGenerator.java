@@ -1031,9 +1031,10 @@ public class MipsGenerator {
                 }
                 return;
             }
-            // Comparaciones
-            if ("<".equals(op) || "<=".equals(op) || ">".equals(op) || ">=".equals(op) || "==".equals(op)
-                    || "!=".equals(op)) {
+            // Comparaciones (solo enteros aqui, floats van al fallback generic)
+            if (("<".equals(op) || "<=".equals(op) || ">".equals(op) || ">=".equals(op) || "==".equals(op)
+                    || "!=".equals(op)) &&
+                    (!"float".equals(getNodeType(bn.getLeft())) && !"float".equals(getNodeType(bn.getRight())))) {
 
                 if (!emitExprInt(bn.getLeft())) {
                     if (falseLabel != null)
@@ -1511,6 +1512,10 @@ public class MipsGenerator {
                 textSection.append("    la $t1, ").append(gl).append("\n");
             }
 
+            // [FIX] Guardar base ($t1) en pila porque emitExprInt puede usar $t1
+            textSection.append("    addi $sp, $sp, -4\n");
+            textSection.append("    sw $t1, 0($sp)\n");
+
             // dims para 2D
             List<Integer> dims = (off != null) ? localDims.get(arrName) : globalDims.get(arrName);
             int cols = -1;
@@ -1520,25 +1525,43 @@ public class MipsGenerator {
 
             // si es acceso 2D y no hay cols válido, abortar
             if (idx.size() >= 2 && cols <= 0) {
+                textSection.append("    addi $sp, $sp, 4\n"); // pop base
                 textSection.append("    li $t1, 0\n");
                 return false;
             }
 
             // idx0
-            if (!emitExprInt(idx.get(0)))
-                return false; // deja resultado en $t0
+            if (!emitExprInt(idx.get(0))) {
+                textSection.append("    addi $sp, $sp, 4\n"); // pop base
+                return false;
+            }
+            // resultado idx0 en $t0
             textSection.append("    move $t2, $t0\n");
 
             if (idx.size() >= 2) {
-                if (!emitExprInt(idx.get(1)))
+                // [FIX] Guardar idx0 ($t2) en pila porque emitExprInt puede usar $t2
+                textSection.append("    addi $sp, $sp, -4\n");
+                textSection.append("    sw $t2, 0($sp)\n");
+
+                if (!emitExprInt(idx.get(1))) {
+                    textSection.append("    addi $sp, $sp, 8\n"); // pop idx0 + base
                     return false;
+                }
                 textSection.append("    move $t3, $t0\n");
+
+                // Recuperar idx0
+                textSection.append("    lw $t2, 0($sp)\n");
+                textSection.append("    addi $sp, $sp, 4\n");
 
                 // t2 = t2*cols + t3
                 textSection.append("    li $t4, ").append(cols).append("\n");
                 textSection.append("    mul $t2, $t2, $t4\n");
                 textSection.append("    addu $t2, $t2, $t3\n");
             }
+
+            // Recuperar base ($t1)
+            textSection.append("    lw $t1, 0($sp)\n");
+            textSection.append("    addi $sp, $sp, 4\n");
 
             // byte offset = linear * stride
             String type = getLValueType(target);

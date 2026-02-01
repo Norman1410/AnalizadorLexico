@@ -9,13 +9,15 @@ str_1: .asciiz "Menu: 1=+, 2=-, 3=*, 4=/, 0=salir"
 str_2: .asciiz "Operacion:"
 str_3: .asciiz "a (float):"
 str_4: .asciiz "b (float):"
-str_5: .asciiz "a + b ="
-str_6: .asciiz "a - b ="
-str_7: .asciiz "a * b ="
-str_8: .asciiz "a / b ="
-str_9: .asciiz "Error: division por cero"
-str_10: .asciiz "Opcion invalida"
-str_11: .asciiz "op es par? (bool):"
+str_5: .asciiz "Debug b:"
+str_6: .asciiz "a + b ="
+str_7: .asciiz "a - b ="
+str_8: .asciiz "a * b ="
+flt_15: .float 0.0
+str_9: .asciiz "a / b ="
+str_10: .asciiz "Error: division por cero"
+str_11: .asciiz "Opcion invalida"
+str_12: .asciiz "op es par? (bool):"
 
 .text
 .globl main
@@ -129,6 +131,19 @@ loop_start_4:
     lw $t1, 0($sp)
     addi $sp, $sp, 4
     s.s $f0, 0($t1)
+    li $v0, 4
+    la $a0, str_5
+    syscall
+    li $v0, 4
+    la $a0, nl
+    syscall
+    l.s $f0, 8($s0)
+    li $v0, 2
+    mov.s $f12, $f0
+    syscall
+    li $v0, 4
+    la $a0, nl
+    syscall
     lw $t0, 0($s0)
     addi $sp, $sp, -4
     sw $t0, 0($sp)
@@ -146,7 +161,7 @@ loop_start_4:
     add.s $f0, $f0, $f1
     s.s $f0, 12($s0)
     li $v0, 4
-    la $a0, str_5
+    la $a0, str_6
     syscall
     li $v0, 4
     la $a0, nl
@@ -177,7 +192,7 @@ decide_next_9:
     sub.s $f0, $f0, $f1
     s.s $f0, 12($s0)
     li $v0, 4
-    la $a0, str_6
+    la $a0, str_7
     syscall
     li $v0, 4
     la $a0, nl
@@ -208,7 +223,7 @@ decide_next_10:
     mul.s $f0, $f0, $f1
     s.s $f0, 12($s0)
     li $v0, 4
-    la $a0, str_7
+    la $a0, str_8
     syscall
     li $v0, 4
     la $a0, nl
@@ -228,11 +243,22 @@ decide_next_11:
     li $t0, 4
     lw $t1, 0($sp)
     addi $sp, $sp, 4
-    beq $t1, $t0, and_rhs_13
-    j decide_next_12
-and_rhs_13:
-    j decide_next_12
-and_cont_14:
+    bne $t1, $t0, decide_next_12
+    l.s $f0, 8($s0)
+    addi $sp, $sp, -4
+    swc1 $f0, 0($sp)
+    l.s $f0, flt_15
+    mov.s $f1, $f0
+    lwc1 $f0, 0($sp)
+    addi $sp, $sp, 4
+    c.eq.s $f0, $f1
+    bc1f flt_true_16
+    li $t0, 0
+    j flt_end_17
+flt_true_16:
+    li $t0, 1
+flt_end_17:
+    beq $t0, $zero, decide_next_14
     l.s $f0, 4($s0)
     addi $sp, $sp, -4
     swc1 $f0, 0($sp)
@@ -243,7 +269,7 @@ and_cont_14:
     div.s $f0, $f0, $f1
     s.s $f0, 12($s0)
     li $v0, 4
-    la $a0, str_8
+    la $a0, str_9
     syscall
     li $v0, 4
     la $a0, nl
@@ -255,25 +281,19 @@ and_cont_14:
     li $v0, 4
     la $a0, nl
     syscall
-    j decide_end_8
-decide_next_12:
-    lw $t0, 0($s0)
-    addi $sp, $sp, -4
-    sw $t0, 0($sp)
-    li $t0, 4
-    lw $t1, 0($sp)
-    addi $sp, $sp, 4
-    bne $t1, $t0, decide_next_15
+    j decide_end_13
+decide_next_14:
     li $v0, 4
-    la $a0, str_9
+    la $a0, str_10
     syscall
     li $v0, 4
     la $a0, nl
     syscall
+decide_end_13:
     j decide_end_8
-decide_next_15:
+decide_next_12:
     li $v0, 4
-    la $a0, str_10
+    la $a0, str_11
     syscall
     li $v0, 4
     la $a0, nl
@@ -287,7 +307,7 @@ decide_end_8:
     move $t0, $v0
     sw $t0, 16($s0)
     li $v0, 4
-    la $a0, str_11
+    la $a0, str_12
     syscall
     li $v0, 4
     la $a0, nl

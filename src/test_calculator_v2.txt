@@ -30,9 +30,12 @@ coal navidad ¿ ? ¡
             op != 0 -> ¡
                 show "a (float):" endl
                 get a endl
-
+                
                 show "b (float):" endl
                 get b endl
+                show "Debug b:" endl
+                show b endl
+
 
                 decide of
                     op == 1 -> ¡
@@ -50,13 +53,17 @@ coal navidad ¿ ? ¡
                         show "a * b =" endl
                         show res endl
                     !
-                    ¿ op == 4 ? @ ¿ b != 0.0 ? -> ¡
-                        res = a / b endl
-                        show "a / b =" endl
-                        show res endl
-                    !
                     op == 4 -> ¡
-                        show "Error: division por cero" endl
+                        decide of
+                            b != 0.0 -> ¡
+                                res = a / b endl
+                                show "a / b =" endl
+                                show res endl
+                            !
+                            else -> ¡
+                                show "Error: division por cero" endl
+                            !
+                        end decide endl
                     !
                     else -> ¡
                         show "Opcion invalida" endl
@@ -68,7 +75,7 @@ coal navidad ¿ ? ¡
                 show par endl
             !
             else -> ¡
-                | Si op == 0, no hacemos nada y salimos en el exit when
+                | Si op == 0, salimos
             !
         end decide endl
 
