@@ -49,8 +49,16 @@ public class DeclNode extends ASTNode {
 
     @Override
     public void validate(semantics.SymbolTable st) {
-        if (st == null) return;
-        if (initializer != null) initializer.validate(st);
+        if (st == null)
+            return;
+        if (dimensions != null && !dimensions.isEmpty()) {
+            if (!"int".equals(varType) && !"char".equals(varType)) {
+                st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                        "Solo se permiten arreglos de tipo 'int' o 'char', pero se obtuvo '" + varType + "'.");
+            }
+        }
+        if (initializer != null)
+            initializer.validate(st);
 
         String fullType = getFullType();
 
@@ -106,7 +114,9 @@ public class DeclNode extends ASTNode {
     public List<Integer> getDims() {
         return (dimensions == null) ? Collections.emptyList() : dimensions;
     }
-    public ASTNode getInitializer() { return initializer; }
+
+    public ASTNode getInitializer() {
+        return initializer;
+    }
 
 }
-

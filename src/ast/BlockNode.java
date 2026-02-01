@@ -46,30 +46,9 @@ public class BlockNode extends ASTNode {
 
         if (statements != null) {
             for (ASTNode stmt : statements) {
-                if (stmt == null)
-                    continue;
-
-                // 1) Decl local: declarar en tabla ANTES de validar initializer
-                if (stmt instanceof DeclNode) {
-                    DeclNode dn = (DeclNode) stmt;
-                    st.declare(new semantics.SymbolInfo(
-                            dn.getName(),
-                            dn.getTypeName(),
-                            semantics.SymbolKind.LOCAL_VAR,
-                            dn.getLine(),
-                            dn.getColumn(),
-                            dn.getDims()));
-
-                    // validar initializer si es que existe
-                    ASTNode init = dn.getInitializer();
-                    if (init != null)
-                        init.validate(st);
-
-                    continue;
+                if (stmt != null) {
+                    stmt.validate(st);
                 }
-
-                // 2) Toodo lo demás
-                stmt.validate(st);
             }
         }
 

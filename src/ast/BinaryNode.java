@@ -103,6 +103,11 @@ public class BinaryNode extends ASTNode {
 
         // Igualdad: == != => boolean
         if (op.equals("==") || op.equals("!=")) {
+            if (lt.equals("string") || rt.equals("string")) {
+                st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                        "El operador '" + op + "' no está permitido para el tipo 'string'.");
+                return "error";
+            }
             // Permitimos int==float como comparación numérica
             if (isNumeric(lt) && isNumeric(rt))
                 return "boolean";
@@ -139,6 +144,7 @@ public class BinaryNode extends ASTNode {
             return "boolean";
         return t;
     }
+
     public ASTNode getLeft() {
         return left;
     }

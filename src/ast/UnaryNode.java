@@ -37,18 +37,7 @@ public class UnaryNode extends ASTNode {
         if (expression != null)
             expression.validate(st);
 
-        String t = getType(st);
-        if (t.equals("error"))
-            return;
-
-        // Validaciones específicas de operadores
-        if (operator.equals("++") || operator.equals("--")) {
-            if (!(expression instanceof VariableNode) && !(expression instanceof ArrayAccessNode)) {
-                st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
-                        "El operador '" + operator
-                        + "' solo puede aplicarse a variables o elementos de arreglo (lvalues).");
-            }
-        }
+        getType(st);
     }
 
     @Override
@@ -62,6 +51,7 @@ public class UnaryNode extends ASTNode {
 
         if (operator == null)
             return t;
+
         if (operator.equals("!")) {
             if (!t.equals("boolean")) {
                 st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
@@ -70,8 +60,14 @@ public class UnaryNode extends ASTNode {
             }
             return "boolean";
         }
-        if (operator.equals("+") || operator.equals("-") || operator.equals("++") ||
-                operator.equals("--") || operator.equals("neg")) {
+
+        if (operator.equals("++") || operator.equals("--")) {
+            if (!(expression instanceof VariableNode) && !(expression instanceof ArrayAccessNode)) {
+                st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                        "El operador '" + operator
+                        + "' solo puede aplicarse a variables o elementos de arreglo (lvalues).");
+                return "error";
+            }
             if (!t.equals("int") && !t.equals("float")) {
                 st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
                         "El operador '" + operator + "' requiere un operando numérico, pero se obtuvo '" + t + "'.");
@@ -80,8 +76,32 @@ public class UnaryNode extends ASTNode {
             return t;
         }
 
+        if (operator.equals("+") || operator.equals("neg")) {
+            if (!t.equals("int") && !t.equals("float")) {
+                st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                        "El operador '" + operator + "' requiere un operando numérico, pero se obtuvo '" + t + "'.");
+                return "error";
+            }
+            return t;
+        }
+
+        if (operator.equals("-")) {
+            if (!(expression instanceof LiteralNode)) {
+                st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                        "El operador '-' unario solo puede aplicarse a literales numéricos.");
+                return "error";
+            }
+            if (!t.equals("int") && !t.equals("float")) {
+                st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
+                        "El operador '-' requiere un operando numérico, pero se obtuvo '" + t + "'.");
+                return "error";
+            }
+            return t;
+        }
+
         return t;
     }
+
     public ASTNode getExpression() {
         return expression;
     }

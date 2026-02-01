@@ -42,9 +42,9 @@ public class ReturnNode extends ASTNode {
             return;
         }
 
-        if ("main".equals(st.currentScope())) {
+        if ("main".equals(st.currentScope()) && "void".equals(expectedType)) {
             st.addError("Error semántico (línea " + (getLine() + 1) + ", col " + (getColumn() + 1) + "): " +
-                    "No se permite 'return' dentro del bloque principal 'navidad'.");
+                    "No se permite 'return' dentro del bloque principal 'navidad' a menos que sea de tipo coal.");
             return;
         }
         String actualType = (expression == null) ? "void" : expression.getType(st);

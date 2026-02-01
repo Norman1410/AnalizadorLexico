@@ -5,7 +5,7 @@ import java.util.*;
 public class ProgramNode extends ASTNode {
     private List<ASTNode> declarations;
     private List<ASTNode> functions;
-    private ASTNode mainBlock;
+    private List<MainNode> mainBlocks;
 
     @Override
     public Map<String, Object> toJsonObject() {
@@ -25,17 +25,21 @@ public class ProgramNode extends ASTNode {
         }
         node.put("functions", funcsJson);
 
-        if (mainBlock != null) {
-            node.put("main", mainBlock.toJsonObject());
+        List<Map<String, Object>> mainsJson = new ArrayList<>();
+        if (mainBlocks != null) {
+            for (MainNode m : mainBlocks)
+                mainsJson.add(m.toJsonObject());
         }
+        node.put("mains", mainsJson);
         return node;
     }
 
-    public ProgramNode(List<ASTNode> declarations, List<ASTNode> functions, ASTNode mainBlock, int line, int column) {
+    public ProgramNode(List<ASTNode> declarations, List<ASTNode> functions, List<MainNode> mainBlocks, int line,
+            int column) {
         super(line, column);
         this.declarations = declarations;
         this.functions = functions;
-        this.mainBlock = mainBlock;
+        this.mainBlocks = mainBlocks;
     }
 
     @Override
@@ -51,8 +55,9 @@ public class ProgramNode extends ASTNode {
             for (ASTNode f : functions)
                 f.print(indent + 1);
         }
-        if (mainBlock != null) {
-            mainBlock.print(indent + 1);
+        if (mainBlocks != null) {
+            for (MainNode m : mainBlocks)
+                m.print(indent + 1);
         }
     }
 
@@ -117,8 +122,15 @@ public class ProgramNode extends ASTNode {
         }
 
         // 4) Validar main (abre scope main)
-        if (mainBlock != null) {
-            mainBlock.validate(st);
+        if (mainBlocks != null && !mainBlocks.isEmpty()) {
+            if (mainBlocks.size() > 1) {
+                st.addError("Error semántico: Se detectaron múltiples bloques 'navidad'. Solo se permite uno.");
+            }
+            for (MainNode m : mainBlocks) {
+                m.validate(st);
+            }
+        } else {
+            st.addError("Error semántico: No se encontró el bloque principal 'navidad'.");
         }
     }
 
@@ -229,26 +241,27 @@ public class ProgramNode extends ASTNode {
 
         st.enterScope("main");
 
+        MainNode primaryMain = (mainBlocks != null && !mainBlocks.isEmpty()) ? mainBlocks.get(0) : null;
+
         st.declare(new semantics.SymbolInfo(
                 "tipo",
                 "main:void",
                 semantics.SymbolKind.META,
-                (mainBlock != null ? mainBlock.getLine() : 0),
-                (mainBlock != null ? mainBlock.getColumn() : 0),
+                (primaryMain != null ? primaryMain.getLine() : 0),
+                (primaryMain != null ? primaryMain.getColumn() : 0),
                 java.util.Collections.emptyList()));
 
         BlockNode mb = null;
 
-        if (mainBlock instanceof MainNode) {
-            MainNode mn = (MainNode) mainBlock;
-            mb = mn.getBlock(); // ya retorna BlockNode o null
+        if (primaryMain != null) {
+            mb = primaryMain.getBlock();
         }
 
-        if (mb == null) {
+        if (mb == null && primaryMain != null) {
             mb = firstNonNullBlock(
-                    (BlockNode) callObject(mainBlock, "getBlock"),
-                    (BlockNode) getObjectField(mainBlock, "block"),
-                    (BlockNode) getObjectField(mainBlock, "body"));
+                    (BlockNode) callObject(primaryMain, "getBlock"),
+                    (BlockNode) getObjectField(primaryMain, "block"),
+                    (BlockNode) getObjectField(primaryMain, "body"));
         }
 
         // Recolectar UNA sola vez
@@ -424,15 +437,12 @@ public class ProgramNode extends ASTNode {
         return functions;
     }
 
-    public ASTNode getMain() {
-        return mainBlock;
+    public List<MainNode> getMainNodes() {
+        return mainBlocks;
     }
 
-    public void validateArraySemantics(semantics.SymbolTable st) {
-    }
-
-    public ASTNode getMainBlock() {
-        return mainBlock;
+    public MainNode getMainBlock() {
+        return (mainBlocks != null && !mainBlocks.isEmpty()) ? mainBlocks.get(0) : null;
     }
 
 }

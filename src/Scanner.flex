@@ -44,11 +44,11 @@ STRING     = \"([^\\\"\r\n]|{ESC})*\"
 /* Ignorar espacios y saltos */
 {WHITE}        { /* se ignora */ }
 
+/* Comentarios multilínea: є ... э (puede tener | como decoración) */
+( "|" [ \t]* )? "\u0454" [^\u044D]* "\u044D" ( [ \t]* "|" )? { /* ignorar comentario */ }
+
 /* Comentario de una línea: empieza con | y se ignora hasta fin de línea */
 "|"[^\r\n]*    { /* se ignora */ }
-
-/* Comentarios multilínea: є ... э */
-"\u0454" [^\u044D]* "\u044D" { /* ignorar comentario */ }
 
 /* Palabras reservadas y símbolos básicos */
 "world"        { return tok(sym.WORLD); }
@@ -60,7 +60,7 @@ STRING     = \"([^\\\"\r\n]|{ESC})*\"
 "float"        { return tok(sym.FLOAT); }
 "char"         { return tok(sym.CHAR); }
 "string"       { return tok(sym.STRING); }
-"boolean"      { return tok(sym.BOOLEAN); }
+"boolean" | "bool" { return tok(sym.BOOLEAN); }
 "void"         { return tok(sym.VOID); }
 
 /* Delimitadores especiales del lenguaje */

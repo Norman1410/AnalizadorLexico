@@ -41,6 +41,10 @@ public class MipsGenerator {
     private final Map<String, List<Integer>> localDims = new HashMap<>();
     private final Map<String, List<Integer>> globalDims = new HashMap<>();
     private String currentExitLabel = null;
+    private String currentReturnType = null;
+
+    // Control de break
+    private final Stack<String> breakStack = new Stack<>();
 
     public MipsGenerator(Object semTab) {
         this.semTab = semTab;
@@ -64,6 +68,7 @@ public class MipsGenerator {
         labelCounter = 0;
         exitMainLabel = null;
         currentExitLabel = null;
+        breakStack.clear();
 
         // =====================
         // DATA base
@@ -107,6 +112,9 @@ public class MipsGenerator {
         }
 
         localDims.clear();
+        localOffset.clear();
+        localType.clear();
+        localBytes = 0;
         // reservar espacio para locals
         preScanLocals(mainBlock);
         if (localBytes > 0) {
@@ -152,17 +160,72 @@ public class MipsGenerator {
                 int slots = 1;
                 for (Integer d : dims)
                     slots *= (d == null ? 0 : d);
-                dataSection.add(label + ": .space " + (slots * 4));
+
+                ASTNode init = dn.getInitializer();
+                if (init instanceof ArrayLiteralNode) {
+                    StringBuilder line = new StringBuilder(label + ": ");
+                    String directive = "char".equalsIgnoreCase(type) ? ".byte " : ".word ";
+                    line.append(directive);
+
+                    List<ASTNode> flattened = flattenArrayLiteral((ArrayLiteralNode) init);
+                    for (int i = 0; i < flattened.size(); i++) {
+                        ASTNode elem = flattened.get(i);
+                        if ("char".equalsIgnoreCase(type)) {
+                            line.append(elem instanceof LiteralNode ? ((LiteralNode) elem).getCharValue() : 0);
+                        } else if ("float".equalsIgnoreCase(type)) {
+                            line.append(elem instanceof LiteralNode ? ((LiteralNode) elem).getFloatValue() : 0);
+                        } else {
+                            line.append(elem instanceof LiteralNode ? ((LiteralNode) elem).getIntValue() : 0);
+                        }
+                        if (i < flattened.size() - 1)
+                            line.append(", ");
+                    }
+                    // Si el literal es más pequeño que el espacio reservado, rellenar?
+                    // Por ahora asumimos que el parser valida dimensiones.
+                    dataSection.add(line.toString());
+                } else {
+                    int stride = "char".equalsIgnoreCase(type) ? 1 : 4;
+                    String directive = stride == 1 ? ".byte 0:" : ".word 0:";
+                    dataSection.add(label + ": " + directive + slots);
+                }
                 continue;
             }
 
-            if ("int".equalsIgnoreCase(type) || "boolean".equalsIgnoreCase(type) || "float".equalsIgnoreCase(type)) {
+            if ("int".equalsIgnoreCase(type) || "boolean".equalsIgnoreCase(type)) {
                 int initVal = 0;
                 ASTNode init = dn.getInitializer();
                 if (init instanceof LiteralNode) {
                     LiteralNode lit = (LiteralNode) init;
                     if (lit.isInt()) {
                         initVal = lit.getIntValue();
+                    }
+                }
+                dataSection.add(label + ": .word " + initVal);
+                continue;
+            }
+
+            if ("float".equalsIgnoreCase(type)) {
+                float initVal = 0.0f;
+                ASTNode init = dn.getInitializer();
+                if (init instanceof LiteralNode) {
+                    LiteralNode lit = (LiteralNode) init;
+                    if (lit.isFloat()) {
+                        initVal = lit.getFloatValue();
+                    } else if (lit.isInt()) {
+                        initVal = (float) lit.getIntValue();
+                    }
+                }
+                dataSection.add(label + ": .float " + initVal);
+                continue;
+            }
+
+            if ("char".equalsIgnoreCase(type)) {
+                int initVal = 0;
+                ASTNode init = dn.getInitializer();
+                if (init instanceof LiteralNode) {
+                    LiteralNode lit = (LiteralNode) init;
+                    if (lit.isChar()) {
+                        initVal = lit.getCharValue();
                     }
                 }
                 dataSection.add(label + ": .word " + initVal);
@@ -265,8 +328,13 @@ public class MipsGenerator {
                 handleFor((ForNode) s);
             } else if (s instanceof GetNode) {
                 handleGet((GetNode) s);
+            } else if (s instanceof BreakNode) {
+                handleBreak((BreakNode) s);
             } else if (s instanceof ReturnNode) {
                 handleReturn((ReturnNode) s);
+            } else if (s instanceof UnaryNode) {
+                // Statements like ++t; or --t;
+                emitExprInt(s);
             } else {
                 textSection.append("    # ignorado: ").append(s.getClass().getSimpleName()).append("\n");
             }
@@ -285,9 +353,31 @@ public class MipsGenerator {
         if (init == null)
             return;
 
-        if ("int".equals(dn.getTypeName())) {
+        // Array initialization
+        if (init instanceof ArrayLiteralNode) {
+            ArrayLiteralNode aln = (ArrayLiteralNode) init;
+            handleArrayInitialization(dn.getName(), aln);
+            return;
+        }
+
+        // Boolean type - use emitExprBool
+        if ("boolean".equals(dn.getTypeName())) {
+            if (emitExprBool(init)) {
+                storeVarFromT0(dn.getName());
+            }
+            return;
+        }
+
+        if ("int".equals(dn.getTypeName()) || "char".equals(dn.getTypeName())) {
             if (emitExprInt(init)) {
                 storeVarFromT0(dn.getName());
+            }
+            return;
+        }
+
+        if ("float".equals(dn.getTypeName())) {
+            if (emitExprFloat(init)) {
+                storeVarFromFloat(dn.getName());
             }
             return;
         }
@@ -310,19 +400,37 @@ public class MipsGenerator {
         ASTNode expr = an.getExpression();
 
         // arreglo: a[i] = expr
-        if (target != null && target.getClass().getSimpleName().equals("ArrayAccessNode")) {
-            // 1) calcular dirección primero -> $t1
+        if (target != null && isNodeNamed(target, "ArrayAccessNode")) {
+            // 1) Cargar el valor del índice y calcular la dirección base
             if (!emitLValueAddress(target))
                 return;
-            textSection.append("    move $t6, $t1\n");
 
-            // 2) calcular expr > $t0
-            if (!emitExprInt(expr))
-                return;
+            // Guardar la dirección calculada ($t1) en la pila por si emitExpr la clava
+            textSection.append("    addi $sp, $sp, -4\n");
+            textSection.append("    sw $t1, 0($sp)\n");
 
-            // 3) store en la dirección
-            textSection.append("    move $t1, $t6\n");
-            textSection.append("    sw $t0, 0($t1)\n");
+            String type = getLValueType(target);
+            if ("float".equalsIgnoreCase(type)) {
+                if (!emitExprFloat(expr)) {
+                    textSection.append("    addi $sp, $sp, 4\n");
+                    return;
+                }
+                textSection.append("    lw $t1, 0($sp)\n");
+                textSection.append("    addi $sp, $sp, 4\n");
+                textSection.append("    s.s $f0, 0($t1)\n");
+            } else {
+                if (!emitExprInt(expr)) {
+                    textSection.append("    addi $sp, $sp, 4\n");
+                    return;
+                }
+                textSection.append("    lw $t1, 0($sp)\n");
+                textSection.append("    addi $sp, $sp, 4\n");
+                if ("char".equalsIgnoreCase(type)) {
+                    textSection.append("    sb $t0, 0($t1)\n");
+                } else {
+                    textSection.append("    sw $t0, 0($t1)\n");
+                }
+            }
             return;
         }
 
@@ -335,9 +443,23 @@ public class MipsGenerator {
                 ? localType.get(dst)
                 : globalType.getOrDefault(dst, "int");
 
-        if ("int".equalsIgnoreCase(dstType)) {
+        if ("int".equalsIgnoreCase(dstType) || "char".equalsIgnoreCase(dstType)) {
             if (emitExprInt(expr)) {
                 storeVarFromT0(dst);
+            }
+            return;
+        }
+
+        if ("boolean".equalsIgnoreCase(dstType)) {
+            if (emitExprBool(expr)) {
+                storeVarFromT0(dst);
+            }
+            return;
+        }
+
+        if ("float".equalsIgnoreCase(dstType)) {
+            if (emitExprFloat(expr)) {
+                storeVarFromFloat(dst);
             }
             return;
         }
@@ -384,15 +506,50 @@ public class MipsGenerator {
                 printNewLine();
                 return;
             }
+            if (lit.isFloat()) {
+                String lbl = internFloat(lit.getFloatValue());
+                textSection.append("    l.s $f12, ").append(lbl).append("\n");
+                textSection.append("    li $v0, 2\n");
+                textSection.append("    syscall\n");
+                printNewLine();
+                return;
+            }
+            if (lit.isChar()) {
+                textSection.append("    li $v0, 11\n");
+                textSection.append("    li $a0, ").append(lit.getCharValue()).append("\n");
+                textSection.append("    syscall\n");
+                printNewLine();
+                return;
+            }
         }
 
-        // mostrar arr[i] (int)
-        if (expr != null && expr.getClass().getSimpleName().equals("ArrayAccessNode")) {
+        // mostrar arr[i] (int/char/float)
+        if (expr != null && isNodeNamed(expr, "ArrayAccessNode")) {
             if (emitLValueAddress(expr)) {
-                textSection.append("    lw $t0, 0($t1)\n");
-                textSection.append("    li $v0, 1\n");
-                textSection.append("    move $a0, $t0\n");
-                textSection.append("    syscall\n");
+                String type = getLValueType(expr);
+                if ("float".equalsIgnoreCase(type)) {
+                    textSection.append("    l.s $f12, 0($t1)\n");
+                    textSection.append("    li $v0, 2\n");
+                    textSection.append("    syscall\n");
+                } else if ("char".equalsIgnoreCase(type)) {
+                    textSection.append("    lb $t0, 0($t1)\n");
+                    textSection.append("    li $v0, 11\n");
+                    textSection.append("    move $a0, $t0\n");
+                    textSection.append("    syscall\n");
+                } else if ("boolean".equalsIgnoreCase(type)) {
+                    textSection.append("    lb $t0, 0($t1)\n"); // boolean as byte or word? usually word in our impl
+                    // if boolean is word, use lw. Check emitGlobals.
+                    // Actually handleShow (variable) uses 1 for bool.
+                    textSection.append("    lw $t0, 0($t1)\n");
+                    textSection.append("    li $v0, 1\n");
+                    textSection.append("    move $a0, $t0\n");
+                    textSection.append("    syscall\n");
+                } else {
+                    textSection.append("    lw $t0, 0($t1)\n");
+                    textSection.append("    li $v0, 1\n");
+                    textSection.append("    move $a0, $t0\n");
+                    textSection.append("    syscall\n");
+                }
                 printNewLine();
             }
             return;
@@ -418,6 +575,23 @@ public class MipsGenerator {
                 // imprime el string apuntado por $t0
                 textSection.append("    li $v0, 4\n");
                 textSection.append("    move $a0, $t0\n");
+                textSection.append("    syscall\n");
+                printNewLine();
+                return;
+            }
+
+            if ("char".equalsIgnoreCase(type)) {
+                textSection.append("    li $v0, 11\n");
+                textSection.append("    move $a0, $t0\n");
+                textSection.append("    syscall\n");
+                printNewLine();
+                return;
+            }
+
+            if ("float".equalsIgnoreCase(type)) {
+                loadVarToFloat(name);
+                textSection.append("    li $v0, 2\n");
+                textSection.append("    mov.s $f12, $f0\n");
                 textSection.append("    syscall\n");
                 printNewLine();
                 return;
@@ -482,6 +656,7 @@ public class MipsGenerator {
         String loopEnd = newLabel("loop_end");
 
         textSection.append(loopStart).append(":\n");
+        breakStack.push(loopEnd);
 
         BlockNode body = ln.getBody();
         if (body != null) {
@@ -495,6 +670,7 @@ public class MipsGenerator {
 
         textSection.append("    j ").append(loopStart).append("\n");
         textSection.append(loopEnd).append(":\n");
+        breakStack.pop();
     }
 
     private void handleFor(ForNode fn) {
@@ -512,6 +688,7 @@ public class MipsGenerator {
         }
 
         textSection.append(startLbl).append(":\n");
+        breakStack.push(endLbl);
 
         ASTNode cond = fn.getCondition();
         if (cond != null) {
@@ -526,12 +703,23 @@ public class MipsGenerator {
         if (step != null) {
             if (step instanceof AssignNode)
                 handleAssign((AssignNode) step);
-            else if (step instanceof BinaryNode)
-                emitExprInt(step);
+            else {
+                // Ejecutar cualquier expresión como paso (ej: ++i)
+                emitExprInt(step); // o emitExprFloat si fuera el caso, pero usualmente es int
+            }
         }
 
         textSection.append("    j ").append(startLbl).append("\n");
         textSection.append(endLbl).append(":\n");
+        breakStack.pop();
+    }
+
+    private void handleBreak(BreakNode bn) {
+        if (!breakStack.isEmpty()) {
+            textSection.append("    j ").append(breakStack.peek()).append("\n");
+        } else {
+            textSection.append("    # break fuera de bucle ignorado\n");
+        }
     }
 
     private void handleGet(GetNode gn) {
@@ -545,12 +733,28 @@ public class MipsGenerator {
             textSection.append("    addi $sp, $sp, -4\n");
             textSection.append("    sw $t1, 0($sp)\n");
 
-            // Leer entero syscall 5
-            textSection.append("    li $v0, 5\n");
-            textSection.append("    syscall\n");
-            textSection.append("    lw $t1, 0($sp)\n");
-            textSection.append("    addi $sp, $sp, 4\n");
-            textSection.append("    sw $v0, 0($t1)\n");
+            String type = getLValueType(target);
+
+            if ("float".equalsIgnoreCase(type)) {
+                textSection.append("    li $v0, 6\n");
+                textSection.append("    syscall\n"); // result in $f0
+                textSection.append("    lw $t1, 0($sp)\n");
+                textSection.append("    addi $sp, $sp, 4\n");
+                textSection.append("    s.s $f0, 0($t1)\n");
+            } else if ("char".equalsIgnoreCase(type)) {
+                textSection.append("    li $v0, 12\n");
+                textSection.append("    syscall\n"); // result in $v0
+                textSection.append("    lw $t1, 0($sp)\n");
+                textSection.append("    addi $sp, $sp, 4\n");
+                textSection.append("    sw $v0, 0($t1)\n");
+            } else {
+                // Leer entero syscall 5
+                textSection.append("    li $v0, 5\n");
+                textSection.append("    syscall\n");
+                textSection.append("    lw $t1, 0($sp)\n");
+                textSection.append("    addi $sp, $sp, 4\n");
+                textSection.append("    sw $v0, 0($t1)\n");
+            }
         }
     }
 
@@ -558,10 +762,20 @@ public class MipsGenerator {
         ASTNode expr = rn.getExpression();
 
         if (expr != null) {
-            if (emitExprInt(expr)) {
-                textSection.append("    move $v0, $t0\n");
+            if ("float".equalsIgnoreCase(currentReturnType)) {
+                if (emitExprFloat(expr)) {
+                    // Result already in $f0
+                }
+            } else if ("boolean".equalsIgnoreCase(currentReturnType)) {
+                if (emitExprBool(expr)) {
+                    textSection.append("    move $v0, $t0\n");
+                }
             } else {
-                textSection.append("    li $v0, 0\n");
+                if (emitExprInt(expr)) {
+                    textSection.append("    move $v0, $t0\n");
+                } else {
+                    textSection.append("    li $v0, 0\n");
+                }
             }
         } else {
             textSection.append("    li $v0, 0\n");
@@ -576,31 +790,122 @@ public class MipsGenerator {
         if (expr == null)
             return false;
 
-        // literal int
+        // literal int/char/bool
         if (expr instanceof LiteralNode) {
             LiteralNode lit = (LiteralNode) expr;
-            if (!lit.isInt())
-                return false;
-            textSection.append("    li $t0, ").append(lit.getIntValue()).append("\n");
-            return true;
+            if (lit.isInt()) {
+                textSection.append("    li $t0, ").append(lit.getIntValue()).append("\n");
+                return true;
+            }
+            if (lit.isChar()) {
+                textSection.append("    li $t0, ").append(lit.getCharValue()).append("\n");
+                return true;
+            }
+            if ("boolean".equalsIgnoreCase(lit.getType(null))) {
+                boolean val = "true".equalsIgnoreCase(lit.getStringValue());
+                textSection.append("    li $t0, ").append(val ? 1 : 0).append("\n");
+                return true;
+            }
+            return false;
         }
-        // variable int
+        // variable int/char
         if (expr instanceof VariableNode) {
             VariableNode vn = (VariableNode) expr;
+            String type = getNodeType(vn);
+            if ("float".equals(type))
+                return false; // Fail for floats
             loadVarToT0(vn.getName());
             return true;
         }
         // unary
         if (expr instanceof UnaryNode) {
             UnaryNode un = (UnaryNode) expr;
-            if (!emitExprInt(un.getExpression()))
-                return false;
-
             String op = un.getOperator();
+
+            // Negation
             if ("-".equals(op) || "neg".equalsIgnoreCase(op)) {
+                if (!emitExprInt(un.getExpression()))
+                    return false;
                 textSection.append("    sub $t0, $zero, $t0\n");
                 return true;
             }
+
+            // Logical NOT
+            if ("!".equals(op) || "NOT".equalsIgnoreCase(op) || "Σ".equals(op)) {
+                if (!emitExprInt(un.getExpression()))
+                    return false;
+                textSection.append("    xori $t0, $t0, 1\n");
+                return true;
+            }
+
+            // Prefix/Postfix increment/decrement
+            boolean isPrefix = op.startsWith("prefix_") || un.isPrefix();
+
+            if (op.contains("++") || op.contains("--")) {
+                ASTNode operand = un.getExpression();
+                int delta = op.contains("++") ? 1 : -1;
+
+                if (operand instanceof VariableNode) {
+                    VariableNode vn = (VariableNode) operand;
+                    String varName = vn.getName();
+                    loadVarToT0(varName);
+
+                    if (isPrefix) {
+                        textSection.append("    addi $t0, $t0, ").append(delta).append("\n");
+                        storeVarFromT0(varName);
+                    } else {
+                        textSection.append("    addi $sp, $sp, -4\n");
+                        textSection.append("    sw $t0, 0($sp)\n"); // Save original for return
+                        textSection.append("    addi $t0, $t0, ").append(delta).append("\n");
+                        storeVarFromT0(varName);
+                        textSection.append("    lw $t0, 0($sp)\n"); // Restore original
+                        textSection.append("    addi $sp, $sp, 4\n");
+                    }
+                    return true;
+                } else if (isNodeNamed(operand, "ArrayAccessNode")) {
+                    if (emitLValueAddress(operand)) {
+                        String type = getLValueType(operand);
+                        boolean isChar = "char".equalsIgnoreCase(type);
+
+                        textSection.append("    addi $sp, $sp, -4\n");
+                        textSection.append("    sw $t1, 0($sp)\n"); // Save address
+
+                        if (isChar) {
+                            textSection.append("    lb $t0, 0($t1)\n");
+                        } else {
+                            textSection.append("    lw $t0, 0($t1)\n");
+                        }
+
+                        if (isPrefix) {
+                            textSection.append("    addi $t0, $t0, ").append(delta).append("\n");
+                            textSection.append("    lw $t1, 0($sp)\n");
+                            if (isChar) {
+                                textSection.append("    sb $t0, 0($t1)\n");
+                            } else {
+                                textSection.append("    sw $t0, 0($t1)\n");
+                            }
+                        } else {
+                            textSection.append("    addi $sp, $sp, -4\n");
+                            textSection.append("    sw $t0, 0($sp)\n"); // Save original value
+
+                            textSection.append("    addi $t0, $t0, ").append(delta).append("\n");
+                            textSection.append("    lw $t1, 4($sp)\n"); // Address is now at +4
+                            if (isChar) {
+                                textSection.append("    sb $t0, 0($t1)\n");
+                            } else {
+                                textSection.append("    sw $t0, 0($t1)\n");
+                            }
+
+                            textSection.append("    lw $t0, 0($sp)\n"); // Restore original value
+                            textSection.append("    addi $sp, $sp, 4\n");
+                        }
+                        textSection.append("    addi $sp, $sp, 4\n"); // Clean address
+                        return true;
+                    }
+                }
+                return false;
+            }
+
             return false;
         }
 
@@ -624,20 +929,30 @@ public class MipsGenerator {
             textSection.append("    addi $sp, $sp, 4\n");
 
             switch (op) {
-                case "+" -> textSection.append("    add $t0, $t1, $t0\n");
-                case "-" -> textSection.append("    sub $t0, $t1, $t0\n");
-                case "*" -> textSection.append("    mul $t0, $t1, $t0\n");
-                case "/", "//" -> {
+                case "+":
+                    textSection.append("    add $t0, $t1, $t0\n");
+                    break;
+                case "-":
+                    textSection.append("    sub $t0, $t1, $t0\n");
+                    break;
+                case "*":
+                    textSection.append("    mul $t0, $t1, $t0\n");
+                    break;
+                case "/":
+                case "//":
                     textSection.append("    div $t1, $t0\n");
                     textSection.append("    mflo $t0\n");
-                }
-                case "%" -> {
+                    break;
+                case "%":
                     textSection.append("    div $t1, $t0\n");
                     textSection.append("    mfhi $t0\n");
-                }
-                default -> {
+                    break;
+                case "^":
+                    // Power: $t1 ^ $t0
+                    emitPowerOperation();
+                    break;
+                default:
                     return false;
-                }
             }
             return true;
         }
@@ -651,7 +966,12 @@ public class MipsGenerator {
         // arr[i] o arr[i][j] como expresión int
         if (expr != null && isNodeNamed(expr, "ArrayAccessNode")) {
             if (emitLValueAddress(expr)) {
-                textSection.append("    lw $t0, 0($t1)\n");
+                String type = getLValueType(expr);
+                if ("char".equalsIgnoreCase(type)) {
+                    textSection.append("    lb $t0, 0($t1)\n");
+                } else {
+                    textSection.append("    lw $t0, 0($t1)\n");
+                }
                 return true;
             }
             return false;
@@ -733,30 +1053,29 @@ public class MipsGenerator {
                 textSection.append("    lw $t1, 0($sp)\n");
                 textSection.append("    addi $sp, $sp, 4\n");
 
-                // t2 = (t1 < t0) etc.
                 switch (op) {
-                    case "<" -> {
+                    case "<":
                         textSection.append("    slt $t2, $t1, $t0\n");
                         branchOnT2(trueLabel, falseLabel);
-                    }
-                    case ">" -> {
+                        break;
+                    case ">":
                         textSection.append("    slt $t2, $t0, $t1\n");
                         branchOnT2(trueLabel, falseLabel);
-                    }
-                    case "<=" -> {
+                        break;
+                    case "<=":
                         // !(t0 < t1) <=> (t1 <= t0)
                         textSection.append("    slt $t2, $t0, $t1\n");
                         // t2 = 1 si t0 < t1
                         textSection.append("    xori $t2, $t2, 1\n");
                         branchOnT2(trueLabel, falseLabel);
-                    }
-                    case ">=" -> {
+                        break;
+                    case ">=":
                         // !(t1 < t0) <=> (t1 >= t0)
                         textSection.append("    slt $t2, $t1, $t0\n");
                         textSection.append("    xori $t2, $t2, 1\n");
                         branchOnT2(trueLabel, falseLabel);
-                    }
-                    case "==" -> {
+                        break;
+                    case "==":
                         if (trueLabel != null) {
                             textSection.append("    beq $t1, $t0, ").append(trueLabel).append("\n");
                             if (falseLabel != null)
@@ -766,8 +1085,8 @@ public class MipsGenerator {
                                 textSection.append("    bne $t1, $t0, ").append(falseLabel).append("\n");
                             }
                         }
-                    }
-                    case "!=" -> {
+                        break;
+                    case "!=":
                         if (trueLabel != null) {
                             textSection.append("    bne $t1, $t0, ").append(trueLabel).append("\n");
                             if (falseLabel != null)
@@ -777,11 +1096,23 @@ public class MipsGenerator {
                                 textSection.append("    beq $t1, $t0, ").append(falseLabel).append("\n");
                             }
                         }
-                    }
+                        break;
                 }
                 return;
             }
         }
+        // Fallback genérico para cualquier expresión booleana (Variable, Call, Literal,
+        // Unary)
+        if (emitExprBool(expr)) {
+            if (falseLabel != null) {
+                textSection.append("    beq $t0, $zero, ").append(falseLabel).append("\n");
+            }
+            if (trueLabel != null) {
+                textSection.append("    j ").append(trueLabel).append("\n");
+            }
+            return;
+        }
+
         if (falseLabel != null) {
             textSection.append("    j ").append(falseLabel).append("\n");
         }
@@ -847,6 +1178,254 @@ public class MipsGenerator {
         }
     }
 
+    private void emitPowerOperation() {
+        // Compute $t1 ^ $t0, result in $t0
+        // Uses $t2 for result, $t3 for base, $t4 for exponent
+        String powLoop = newLabel("pow_loop");
+        String powEnd = newLabel("pow_end");
+
+        textSection.append("    li $t2, 1\n"); // result = 1
+        textSection.append("    beq $t0, $zero, ").append(powEnd).append("\n"); // if exp == 0, done
+        textSection.append("    move $t3, $t1\n"); // base = $t1
+        textSection.append("    move $t4, $t0\n"); // counter = $t0
+
+        textSection.append(powLoop).append(":\n");
+        textSection.append("    beq $t4, $zero, ").append(powEnd).append("\n");
+        textSection.append("    mul $t2, $t2, $t3\n"); // result *= base
+        textSection.append("    addi $t4, $t4, -1\n"); // counter--
+        textSection.append("    j ").append(powLoop).append("\n");
+
+        textSection.append(powEnd).append(":\n");
+        textSection.append("    move $t0, $t2\n"); // return result
+    }
+
+    private void handleArrayInitialization(String arrayName, ArrayLiteralNode aln) {
+        List<ASTNode> elements = flattenArrayLiteral(aln);
+        if (elements == null || elements.isEmpty())
+            return;
+
+        Integer baseOffset = localOffset.get(arrayName);
+        if (baseOffset == null) {
+            return;
+        }
+
+        // Local array
+        String type = localType.get(arrayName);
+        int stride = "char".equalsIgnoreCase(type) ? 1 : 4;
+
+        for (int i = 0; i < elements.size(); i++) {
+            ASTNode elem = elements.get(i);
+            if (elem == null)
+                continue;
+
+            int elemOffset = baseOffset + (i * stride);
+            if ("float".equalsIgnoreCase(type)) {
+                if (emitExprFloat(elem)) {
+                    textSection.append("    s.s $f0, ").append(elemOffset).append("($s0)\n");
+                }
+            } else {
+                if (emitExprInt(elem)) {
+                    if (stride == 1) {
+                        textSection.append("    sb $t0, ").append(elemOffset).append("($s0)\n");
+                    } else {
+                        textSection.append("    sw $t0, ").append(elemOffset).append("($s0)\n");
+                    }
+                }
+            }
+        }
+    }
+
+    private List<ASTNode> flattenArrayLiteral(ArrayLiteralNode aln) {
+        List<ASTNode> result = new ArrayList<>();
+        if (aln == null || aln.getElements() == null)
+            return result;
+        for (ASTNode n : aln.getElements()) {
+            if (n instanceof ArrayLiteralNode) {
+                result.addAll(flattenArrayLiteral((ArrayLiteralNode) n));
+            } else {
+                result.add(n);
+            }
+        }
+        return result;
+    }
+
+    private String getNodeType(ASTNode n) {
+        if (n == null)
+            return "int";
+        if (n instanceof VariableNode) {
+            String name = ((VariableNode) n).getName();
+            if (localType.containsKey(name))
+                return localType.get(name);
+            if (globalType.getOrDefault(name, "int") != null)
+                return globalType.getOrDefault(name, "int");
+        }
+        if (isNodeNamed(n, "ArrayAccessNode")) {
+            return getLValueType(n);
+        }
+        return n.getType((semantics.SymbolTable) semTab);
+    }
+
+    private boolean emitExprBool(ASTNode expr) {
+        if (expr == null)
+            return false;
+
+        // Boolean literals
+        if (expr instanceof LiteralNode) {
+            LiteralNode lit = (LiteralNode) expr;
+            String litType = lit.getType(null);
+            if ("boolean".equals(litType)) {
+                // Check if it's true or false by getting string value
+                String strVal = lit.getStringValue();
+                boolean boolVal = "true".equalsIgnoreCase(strVal);
+                textSection.append("    li $t0, ").append(boolVal ? 1 : 0).append("\n");
+                return true;
+            }
+        }
+
+        // Unary NOT
+        if (expr instanceof UnaryNode) {
+            UnaryNode un = (UnaryNode) expr;
+            String op = un.getOperator();
+            if ("!".equals(op) || "NOT".equalsIgnoreCase(op) || "Σ".equals(op)) {
+                if (!emitExprBool(un.getExpression()))
+                    return false;
+                textSection.append("    xori $t0, $t0, 1\n");
+                return true;
+            }
+        }
+
+        // Binary expressions
+        if (expr instanceof BinaryNode) {
+            BinaryNode bn = (BinaryNode) expr;
+            String op = bn.getOperator();
+
+            // Relational operators
+            if ("<".equals(op) || "<=".equals(op) || ">".equals(op) ||
+                    ">=".equals(op) || "==".equals(op) || "!=".equals(op)) {
+
+                String lt = getNodeType(bn.getLeft());
+                String rt = getNodeType(bn.getRight());
+
+                if ("float".equals(lt) || "float".equals(rt)) {
+                    // Comparación de punto flotante
+                    if (!emitExprFloat(bn.getLeft()))
+                        return false;
+                    textSection.append("    addi $sp, $sp, -4\n");
+                    textSection.append("    swc1 $f0, 0($sp)\n");
+                    if (!emitExprFloat(bn.getRight()))
+                        return false;
+                    textSection.append("    mov.s $f1, $f0\n");
+                    textSection.append("    lwc1 $f0, 0($sp)\n");
+                    textSection.append("    addi $sp, $sp, 4\n");
+
+                    switch (op) {
+                        case "<":
+                            textSection.append("    c.lt.s $f0, $f1\n");
+                            break;
+                        case "<=":
+                            textSection.append("    c.le.s $f0, $f1\n");
+                            break;
+                        case ">":
+                            textSection.append("    c.lt.s $f1, $f0\n");
+                            break;
+                        case ">=":
+                            textSection.append("    c.le.s $f1, $f0\n");
+                            break;
+                        case "==":
+                            textSection.append("    c.eq.s $f0, $f1\n");
+                            break;
+                        case "!=":
+                            textSection.append("    c.eq.s $f0, $f1\n");
+                            break;
+                    }
+                    String lblTrue = newLabel("flt_true");
+                    String lblEnd = newLabel("flt_end");
+                    if ("!=".equals(op)) {
+                        textSection.append("    bc1f ").append(lblTrue).append("\n");
+                    } else {
+                        textSection.append("    bc1t ").append(lblTrue).append("\n");
+                    }
+                    textSection.append("    li $t0, 0\n");
+                    textSection.append("    j ").append(lblEnd).append("\n");
+                    textSection.append(lblTrue).append(":\n");
+                    textSection.append("    li $t0, 1\n");
+                    textSection.append(lblEnd).append(":\n");
+                    return true;
+                }
+
+                if (!emitExprInt(bn.getLeft()))
+                    return false;
+                textSection.append("    addi $sp, $sp, -4\n");
+                textSection.append("    sw $t0, 0($sp)\n");
+
+                if (!emitExprInt(bn.getRight()))
+                    return false;
+                textSection.append("    move $t1, $t0\n");
+                textSection.append("    lw $t0, 0($sp)\n");
+                textSection.append("    addi $sp, $sp, 4\n");
+
+                // Generate comparison, result in $t0 (0 or 1)
+                switch (op) {
+                    case "<":
+                        textSection.append("    slt $t0, $t0, $t1\n");
+                        break;
+                    case ">":
+                        textSection.append("    slt $t0, $t1, $t0\n");
+                        break;
+                    case "<=":
+                        textSection.append("    slt $t0, $t1, $t0\n");
+                        textSection.append("    xori $t0, $t0, 1\n");
+                        break;
+                    case ">=":
+                        textSection.append("    slt $t0, $t0, $t1\n");
+                        textSection.append("    xori $t0, $t0, 1\n");
+                        break;
+                    case "==":
+                        textSection.append("    sub $t0, $t0, $t1\n");
+                        textSection.append("    sltiu $t0, $t0, 1\n");
+                        break;
+                    case "!=":
+                        textSection.append("    sub $t0, $t0, $t1\n");
+                        textSection.append("    sltu $t0, $zero, $t0\n");
+                        break;
+                }
+                return true;
+            }
+
+            // Logical operators
+            if ("&&".equals(op) || "@".equals(op)) {
+                if (!emitExprBool(bn.getLeft()))
+                    return false;
+                textSection.append("    addi $sp, $sp, -4\n");
+                textSection.append("    sw $t0, 0($sp)\n");
+
+                if (!emitExprBool(bn.getRight()))
+                    return false;
+                textSection.append("    lw $t1, 0($sp)\n");
+                textSection.append("    addi $sp, $sp, 4\n");
+                textSection.append("    and $t0, $t0, $t1\n");
+                return true;
+            }
+
+            if ("||".equals(op) || "~".equals(op)) {
+                if (!emitExprBool(bn.getLeft()))
+                    return false;
+                textSection.append("    addi $sp, $sp, -4\n");
+                textSection.append("    sw $t0, 0($sp)\n");
+
+                if (!emitExprBool(bn.getRight()))
+                    return false;
+                textSection.append("    lw $t1, 0($sp)\n");
+                textSection.append("    addi $sp, $sp, 4\n");
+                textSection.append("    or $t0, $t0, $t1\n");
+                return true;
+            }
+        }
+
+        // Fallback: try as int (for compatibility)
+        return emitExprInt(expr);
+    }
+
     private boolean isNodeNamed(Object o, String simpleName) {
         return o != null && o.getClass().getSimpleName().equals(simpleName);
     }
@@ -855,7 +1434,7 @@ public class MipsGenerator {
         if (o == null)
             return null;
         try {
-            var m = o.getClass().getMethod(method);
+            java.lang.reflect.Method m = o.getClass().getMethod(method);
             m.setAccessible(true);
             return m.invoke(o);
         } catch (Exception e) {
@@ -958,8 +1537,11 @@ public class MipsGenerator {
                 textSection.append("    addu $t2, $t2, $t3\n");
             }
 
-            // byte offset = linear * 4
-            textSection.append("    sll $t2, $t2, 2\n");
+            // byte offset = linear * stride
+            String type = getLValueType(target);
+            if (!"char".equalsIgnoreCase(type)) {
+                textSection.append("    sll $t2, $t2, 2\n");
+            }
             textSection.append("    addu $t1, $t1, $t2\n");
             return true;
         }
@@ -1050,6 +1632,7 @@ public class MipsGenerator {
     private void emitFunction(FunctionNode fn) {
         String fname = fn.getName();
         String exitLbl = "exit_func_" + fname;
+        currentReturnType = fn.getReturnType();
 
         textSection.append("\n").append(fname).append(":\n");
 
@@ -1075,7 +1658,7 @@ public class MipsGenerator {
 
             localOffset.put(pname, localBytes);
             localType.put(pname, ptype);
-            localDims.put(pname, List.of());
+            localDims.put(pname, Collections.emptyList());
             localBytes += 4;
         }
         if (body != null) {
@@ -1133,18 +1716,170 @@ public class MipsGenerator {
         }
     }
 
+    private void storeVarFromFloat(String name) {
+        Integer off = localOffset.get(name);
+        if (off != null) {
+            textSection.append("    s.s $f0, ").append(off).append("($s0)\n");
+            return;
+        }
+        String gl = globalLabel.get(name);
+        if (gl != null) {
+            textSection.append("    s.s $f0, ").append(gl).append("\n");
+        }
+    }
+
+    private void loadVarToFloat(String name) {
+        Integer off = localOffset.get(name);
+        if (off != null) {
+            textSection.append("    l.s $f0, ").append(off).append("($s0)\n");
+            return;
+        }
+        String gl = globalLabel.get(name);
+        if (gl != null) {
+            textSection.append("    l.s $f0, ").append(gl).append("\n");
+            return;
+        }
+        textSection.append("    mtc1 $zero, $f0\n");
+        textSection.append("    cvt.s.w $f0, $f0\n");
+    }
+
+    private String getLValueType(ASTNode target) {
+        if (target instanceof VariableNode) {
+            String name = ((VariableNode) target).getName();
+            if (localType.containsKey(name))
+                return localType.get(name);
+            if (globalType.containsKey(name))
+                return globalType.get(name);
+        }
+        if (isNodeNamed(target, "ArrayAccessNode")) {
+            ASTNode base = (ASTNode) callNoArg(target, "getArray");
+            if (base == null)
+                base = (ASTNode) callNoArg(target, "getBase");
+            if (base instanceof VariableNode) {
+                String name = ((VariableNode) base).getName();
+                if (localType.containsKey(name))
+                    return localType.get(name);
+                if (globalType.containsKey(name))
+                    return globalType.get(name);
+            }
+        }
+        return "int";
+    }
+
+    private String internFloat(float f) {
+        String label = "flt_" + (labelCounter++);
+        dataSection.add(label + ": .float " + f);
+        return label;
+    }
+
+    private boolean emitExprFloat(ASTNode expr) {
+        if (expr == null)
+            return false;
+
+        if (expr instanceof LiteralNode) {
+            LiteralNode lit = (LiteralNode) expr;
+            if (lit.isFloat()) {
+                String lbl = internFloat(lit.getFloatValue());
+                textSection.append("    l.s $f0, ").append(lbl).append("\n");
+                return true;
+            }
+            if (lit.isInt()) {
+                textSection.append("    li $t0, ").append(lit.getIntValue()).append("\n");
+                textSection.append("    mtc1 $t0, $f0\n");
+                textSection.append("    cvt.s.w $f0, $f0\n");
+                return true;
+            }
+        }
+
+        if (expr instanceof VariableNode) {
+            VariableNode vn = (VariableNode) expr;
+            loadVarToFloat(vn.getName());
+            return true;
+        }
+
+        if (expr instanceof BinaryNode) {
+            BinaryNode bn = (BinaryNode) expr;
+            String op = bn.getOperator();
+
+            if (!emitExprFloat(bn.getLeft()))
+                return false;
+            textSection.append("    addi $sp, $sp, -4\n");
+            textSection.append("    swc1 $f0, 0($sp)\n");
+
+            if (!emitExprFloat(bn.getRight()))
+                return false;
+            textSection.append("    mov.s $f1, $f0\n");
+            textSection.append("    lwc1 $f0, 0($sp)\n");
+            textSection.append("    addi $sp, $sp, 4\n");
+
+            switch (op) {
+                case "+":
+                    textSection.append("    add.s $f0, $f0, $f1\n");
+                    break;
+                case "-":
+                    textSection.append("    sub.s $f0, $f0, $f1\n");
+                    break;
+                case "*":
+                    textSection.append("    mul.s $f0, $f0, $f1\n");
+                    break;
+                case "/":
+                    textSection.append("    div.s $f0, $f0, $f1\n");
+                    break;
+                default:
+                    return false;
+            }
+            return true;
+        }
+
+        if (expr instanceof CallNode) {
+            emitCall((CallNode) expr);
+            return true;
+        }
+
+        if (expr != null && isNodeNamed(expr, "ArrayAccessNode")) {
+            if (emitLValueAddress(expr)) {
+                textSection.append("    l.s $f0, 0($t1)\n");
+                return true;
+            }
+            return false;
+        }
+
+        if (emitExprInt(expr)) {
+            textSection.append("    mtc1 $t0, $f0\n");
+            textSection.append("    cvt.s.w $f0, $f0\n");
+            return true;
+        }
+
+        return false;
+    }
+
     private void emitCall(CallNode cn) {
         String fname = cn.getName();
         List<ASTNode> args = cn.getArguments();
         int n = (args == null) ? 0 : args.size();
 
+        // En un backend decente, deberíamos saber los tipos de los parámetros.
+        // Por ahora, si es float, emitExprFloat. Si no, emitExprInt.
         for (int i = 0; i < n; i++) {
             ASTNode a = args.get(i);
-            if (!emitExprInt(a)) {
-                textSection.append("    li $t0, 0\n");
+            String type = getNodeType(a);
+            if ("float".equalsIgnoreCase(type)) {
+                if (emitExprFloat(a)) {
+                    textSection.append("    addi $sp, $sp, -4\n");
+                    textSection.append("    swc1 $f0, 0($sp)\n");
+                } else {
+                    textSection.append("    addi $sp, $sp, -4\n");
+                    textSection.append("    sw $zero, 0($sp)\n");
+                }
+            } else {
+                if (emitExprInt(a)) {
+                    textSection.append("    addi $sp, $sp, -4\n");
+                    textSection.append("    sw $t0, 0($sp)\n");
+                } else {
+                    textSection.append("    addi $sp, $sp, -4\n");
+                    textSection.append("    sw $zero, 0($sp)\n");
+                }
             }
-            textSection.append("    addi $sp, $sp, -4\n");
-            textSection.append("    sw $t0, 0($sp)\n");
         }
 
         textSection.append("    jal ").append(fname).append("\n");
@@ -1161,7 +1896,7 @@ public class MipsGenerator {
         asm.append("\n");
         asm.append(textSection);
 
-        Files.writeString(Path.of(rutaMips), asm.toString(), StandardCharsets.UTF_8);
+        Files.write(java.nio.file.Paths.get(rutaMips), asm.toString().getBytes(StandardCharsets.UTF_8));
     }
 
 }

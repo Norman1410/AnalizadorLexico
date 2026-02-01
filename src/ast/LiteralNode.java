@@ -74,6 +74,14 @@ public class LiteralNode extends ASTNode {
         return "int".equalsIgnoreCase(type);
     }
 
+    public boolean isFloat() {
+        return "float".equalsIgnoreCase(type);
+    }
+
+    public boolean isChar() {
+        return "char".equalsIgnoreCase(type);
+    }
+
     public String getStringValue() {
         if (value == null)
             return "";
@@ -93,6 +101,43 @@ public class LiteralNode extends ASTNode {
             try {
                 return Integer.parseInt(s.replace("\"", "").trim());
             } catch (Exception ignored) {
+            }
+        }
+        return 0;
+    }
+
+    public float getFloatValue() {
+        if (value instanceof Float)
+            return (Float) value;
+        if (value instanceof Double)
+            return ((Double) value).floatValue();
+        if (value instanceof String) {
+            try {
+                return Float.parseFloat(((String) value).replace("\"", "").trim());
+            } catch (Exception e) {
+            }
+        }
+        return 0.0f;
+    }
+
+    public int getCharValue() {
+        if (value instanceof Integer)
+            return (Integer) value;
+        if (value instanceof String) {
+            String s = (String) value;
+            if (s.length() >= 3 && s.startsWith("'") && s.endsWith("'")) {
+                char c = s.charAt(1);
+                if (c == '\\' && s.length() >= 4) {
+                    char next = s.charAt(2);
+                    if (next == 'n')
+                        return '\n';
+                    if (next == 't')
+                        return '\t';
+                    if (next == 'r')
+                        return '\r';
+                    return next;
+                }
+                return c;
             }
         }
         return 0;

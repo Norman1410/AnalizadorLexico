@@ -72,4 +72,8 @@ public class ArrayLiteralNode extends ASTNode {
 
         return baseType + "[]";
     }
+
+    public List<ASTNode> getElements() {
+        return elements;
+    }
 }
