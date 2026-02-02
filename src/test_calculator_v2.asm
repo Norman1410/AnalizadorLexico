@@ -1,5 +1,6 @@
 .data
 nl: .asciiz "\n"
+.align 2
 str_0: .asciiz "=== CALCULADORA ==="
 g_banner: .word str_0
 flt_1: .float 0.0
@@ -24,20 +25,20 @@ str_12: .asciiz "op es par? (bool):"
 
 
 isEven:
-    addi $sp, $sp, -8
-    sw $ra, 4($sp)
-    sw $s0, 0($sp)
     addi $sp, $sp, -4
-    move $s0, $sp
-    lw $t0, 12($sp)
-    sw $t0, 0($s0)
-    lw $t0, 0($s0)
+    sw $fp, 0($sp)
+    move $fp, $sp
+    addi $sp, $sp, -4
+    sw $ra, 0($sp)
+    addi $sp, $sp, -0
+    lw $t0, 4($fp)
     addi $sp, $sp, -4
     sw $t0, 0($sp)
     li $t0, 2
-    lw $t1, 0($sp)
+    move $t1, $t0
+    lw $t0, 0($sp)
     addi $sp, $sp, 4
-    div $t1, $t0
+    div $t0, $t1
     mfhi $t0
     addi $sp, $sp, -4
     sw $t0, 0($sp)
@@ -45,50 +46,56 @@ isEven:
     move $t1, $t0
     lw $t0, 0($sp)
     addi $sp, $sp, 4
-    sub $t0, $t0, $t1
+    xor $t0, $t0, $t1
     sltiu $t0, $t0, 1
     move $v0, $t0
     j exit_func_isEven
 exit_func_isEven:
+    lw $ra, -4($fp)
+    move $sp, $fp
+    lw $fp, 0($sp)
     addi $sp, $sp, 4
-    lw $s0, 0($sp)
-    lw $ra, 4($sp)
-    addi $sp, $sp, 8
     jr $ra
 main:
-    addi $sp, $sp, -20
-    move $s0, $sp
+    addi $sp, $sp, -4
+    sw $fp, 0($sp)
+    move $fp, $sp
+    addi $sp, $sp, -4
+    sw $ra, 0($sp)
+    addi $sp, $sp, -24
     li $t0, 0
-    sw $t0, 0($s0)
+    sw $t0, -8($fp)
     l.s $f0, flt_1
-    s.s $f0, 4($s0)
+    s.s $f0, -12($fp)
     l.s $f0, flt_2
-    s.s $f0, 8($s0)
+    s.s $f0, -16($fp)
     l.s $f0, flt_3
-    s.s $f0, 12($s0)
+    s.s $f0, -20($fp)
     li $t0, 0
-    sw $t0, 16($s0)
-    lw $t0, g_banner
-    li $v0, 4
+    sw $t0, -24($fp)
+    li $t0, 0
+    li $v0, 1
     move $a0, $t0
     syscall
     li $v0, 4
     la $a0, nl
     syscall
 loop_start_4:
+    la $t0, str_1
     li $v0, 4
-    la $a0, str_1
+    move $a0, $t0
     syscall
     li $v0, 4
     la $a0, nl
     syscall
+    la $t0, str_2
     li $v0, 4
-    la $a0, str_2
+    move $a0, $t0
     syscall
     li $v0, 4
     la $a0, nl
     syscall
-    addi $t1, $s0, 0
+    addi $t1, $fp, -8
     addi $sp, $sp, -4
     sw $t1, 0($sp)
     li $v0, 5
@@ -96,20 +103,24 @@ loop_start_4:
     lw $t1, 0($sp)
     addi $sp, $sp, 4
     sw $v0, 0($t1)
-    lw $t0, 0($s0)
+    lw $t0, -8($fp)
     addi $sp, $sp, -4
     sw $t0, 0($sp)
     li $t0, 0
-    lw $t1, 0($sp)
+    move $t1, $t0
+    lw $t0, 0($sp)
     addi $sp, $sp, 4
-    beq $t1, $t0, decide_next_7
+    xor $t0, $t0, $t1
+    sltu $t0, $zero, $t0
+    beq $t0, $zero, decide_next_7
+    la $t0, str_3
     li $v0, 4
-    la $a0, str_3
+    move $a0, $t0
     syscall
     li $v0, 4
     la $a0, nl
     syscall
-    addi $t1, $s0, 4
+    addi $t1, $fp, -12
     addi $sp, $sp, -4
     sw $t1, 0($sp)
     li $v0, 6
@@ -117,13 +128,14 @@ loop_start_4:
     lw $t1, 0($sp)
     addi $sp, $sp, 4
     s.s $f0, 0($t1)
+    la $t0, str_4
     li $v0, 4
-    la $a0, str_4
+    move $a0, $t0
     syscall
     li $v0, 4
     la $a0, nl
     syscall
-    addi $t1, $s0, 8
+    addi $t1, $fp, -16
     addi $sp, $sp, -4
     sw $t1, 0($sp)
     li $v0, 6
@@ -131,120 +143,136 @@ loop_start_4:
     lw $t1, 0($sp)
     addi $sp, $sp, 4
     s.s $f0, 0($t1)
+    la $t0, str_5
     li $v0, 4
-    la $a0, str_5
+    move $a0, $t0
     syscall
     li $v0, 4
     la $a0, nl
     syscall
-    l.s $f0, 8($s0)
-    li $v0, 2
+    l.s $f0, -16($fp)
     mov.s $f12, $f0
+    li $v0, 2
     syscall
     li $v0, 4
     la $a0, nl
     syscall
-    lw $t0, 0($s0)
+    lw $t0, -8($fp)
     addi $sp, $sp, -4
     sw $t0, 0($sp)
     li $t0, 1
-    lw $t1, 0($sp)
+    move $t1, $t0
+    lw $t0, 0($sp)
     addi $sp, $sp, 4
-    bne $t1, $t0, decide_next_9
-    l.s $f0, 4($s0)
+    xor $t0, $t0, $t1
+    sltiu $t0, $t0, 1
+    beq $t0, $zero, decide_next_9
+    l.s $f0, -12($fp)
     addi $sp, $sp, -4
     swc1 $f0, 0($sp)
-    l.s $f0, 8($s0)
+    l.s $f0, -16($fp)
     mov.s $f1, $f0
     lwc1 $f0, 0($sp)
     addi $sp, $sp, 4
     add.s $f0, $f0, $f1
-    s.s $f0, 12($s0)
+    s.s $f0, -20($fp)
+    la $t0, str_6
     li $v0, 4
-    la $a0, str_6
+    move $a0, $t0
     syscall
     li $v0, 4
     la $a0, nl
     syscall
-    l.s $f0, 12($s0)
-    li $v0, 2
+    l.s $f0, -20($fp)
     mov.s $f12, $f0
+    li $v0, 2
     syscall
     li $v0, 4
     la $a0, nl
     syscall
     j decide_end_8
 decide_next_9:
-    lw $t0, 0($s0)
+    lw $t0, -8($fp)
     addi $sp, $sp, -4
     sw $t0, 0($sp)
     li $t0, 2
-    lw $t1, 0($sp)
+    move $t1, $t0
+    lw $t0, 0($sp)
     addi $sp, $sp, 4
-    bne $t1, $t0, decide_next_10
-    l.s $f0, 4($s0)
+    xor $t0, $t0, $t1
+    sltiu $t0, $t0, 1
+    beq $t0, $zero, decide_next_10
+    l.s $f0, -12($fp)
     addi $sp, $sp, -4
     swc1 $f0, 0($sp)
-    l.s $f0, 8($s0)
+    l.s $f0, -16($fp)
     mov.s $f1, $f0
     lwc1 $f0, 0($sp)
     addi $sp, $sp, 4
     sub.s $f0, $f0, $f1
-    s.s $f0, 12($s0)
+    s.s $f0, -20($fp)
+    la $t0, str_7
     li $v0, 4
-    la $a0, str_7
+    move $a0, $t0
     syscall
     li $v0, 4
     la $a0, nl
     syscall
-    l.s $f0, 12($s0)
-    li $v0, 2
+    l.s $f0, -20($fp)
     mov.s $f12, $f0
+    li $v0, 2
     syscall
     li $v0, 4
     la $a0, nl
     syscall
     j decide_end_8
 decide_next_10:
-    lw $t0, 0($s0)
+    lw $t0, -8($fp)
     addi $sp, $sp, -4
     sw $t0, 0($sp)
     li $t0, 3
-    lw $t1, 0($sp)
+    move $t1, $t0
+    lw $t0, 0($sp)
     addi $sp, $sp, 4
-    bne $t1, $t0, decide_next_11
-    l.s $f0, 4($s0)
+    xor $t0, $t0, $t1
+    sltiu $t0, $t0, 1
+    beq $t0, $zero, decide_next_11
+    l.s $f0, -12($fp)
     addi $sp, $sp, -4
     swc1 $f0, 0($sp)
-    l.s $f0, 8($s0)
+    l.s $f0, -16($fp)
     mov.s $f1, $f0
     lwc1 $f0, 0($sp)
     addi $sp, $sp, 4
     mul.s $f0, $f0, $f1
-    s.s $f0, 12($s0)
+    s.s $f0, -20($fp)
+    la $t0, str_8
     li $v0, 4
-    la $a0, str_8
+    move $a0, $t0
     syscall
     li $v0, 4
     la $a0, nl
     syscall
-    l.s $f0, 12($s0)
-    li $v0, 2
+    l.s $f0, -20($fp)
     mov.s $f12, $f0
+    li $v0, 2
     syscall
     li $v0, 4
     la $a0, nl
     syscall
     j decide_end_8
 decide_next_11:
-    lw $t0, 0($s0)
+    lw $t0, -8($fp)
     addi $sp, $sp, -4
     sw $t0, 0($sp)
     li $t0, 4
-    lw $t1, 0($sp)
+    move $t1, $t0
+    lw $t0, 0($sp)
     addi $sp, $sp, 4
-    bne $t1, $t0, decide_next_12
-    l.s $f0, 8($s0)
+    xor $t0, $t0, $t1
+    sltiu $t0, $t0, 1
+    beq $t0, $zero, decide_next_12
+    l.s $f0, -16($fp)
     addi $sp, $sp, -4
     swc1 $f0, 0($sp)
     l.s $f0, flt_15
@@ -252,39 +280,41 @@ decide_next_11:
     lwc1 $f0, 0($sp)
     addi $sp, $sp, 4
     c.eq.s $f0, $f1
-    bc1f flt_true_16
+    bc1f flt_rel_e_16
     li $t0, 0
-    j flt_end_17
-flt_true_16:
+    j flt_rel_f_17
+flt_rel_e_16:
     li $t0, 1
-flt_end_17:
+flt_rel_f_17:
     beq $t0, $zero, decide_next_14
-    l.s $f0, 4($s0)
+    l.s $f0, -12($fp)
     addi $sp, $sp, -4
     swc1 $f0, 0($sp)
-    l.s $f0, 8($s0)
+    l.s $f0, -16($fp)
     mov.s $f1, $f0
     lwc1 $f0, 0($sp)
     addi $sp, $sp, 4
     div.s $f0, $f0, $f1
-    s.s $f0, 12($s0)
+    s.s $f0, -20($fp)
+    la $t0, str_9
     li $v0, 4
-    la $a0, str_9
+    move $a0, $t0
     syscall
     li $v0, 4
     la $a0, nl
     syscall
-    l.s $f0, 12($s0)
-    li $v0, 2
+    l.s $f0, -20($fp)
     mov.s $f12, $f0
+    li $v0, 2
     syscall
     li $v0, 4
     la $a0, nl
     syscall
     j decide_end_13
 decide_next_14:
+    la $t0, str_10
     li $v0, 4
-    la $a0, str_10
+    move $a0, $t0
     syscall
     li $v0, 4
     la $a0, nl
@@ -292,27 +322,29 @@ decide_next_14:
 decide_end_13:
     j decide_end_8
 decide_next_12:
+    la $t0, str_11
     li $v0, 4
-    la $a0, str_11
+    move $a0, $t0
     syscall
     li $v0, 4
     la $a0, nl
     syscall
 decide_end_8:
-    lw $t0, 0($s0)
+    lw $t0, -8($fp)
     addi $sp, $sp, -4
     sw $t0, 0($sp)
     jal isEven
     addi $sp, $sp, 4
     move $t0, $v0
-    sw $t0, 16($s0)
+    sw $t0, -24($fp)
+    la $t0, str_12
     li $v0, 4
-    la $a0, str_12
+    move $a0, $t0
     syscall
     li $v0, 4
     la $a0, nl
     syscall
-    lw $t0, 16($s0)
+    lw $t0, -24($fp)
     li $v0, 1
     move $a0, $t0
     syscall
@@ -322,17 +354,23 @@ decide_end_8:
     j decide_end_6
 decide_next_7:
 decide_end_6:
-    lw $t0, 0($s0)
+    lw $t0, -8($fp)
     addi $sp, $sp, -4
     sw $t0, 0($sp)
     li $t0, 0
-    lw $t1, 0($sp)
+    move $t1, $t0
+    lw $t0, 0($sp)
     addi $sp, $sp, 4
-    beq $t1, $t0, loop_end_5
+    xor $t0, $t0, $t1
+    sltiu $t0, $t0, 1
+    bne $t0, $zero, loop_end_5
     j loop_start_4
     j loop_start_4
 loop_end_5:
 exit_main_0:
-    addi $sp, $sp, 20
+    lw $ra, -4($fp)
+    move $sp, $fp
+    lw $fp, 0($sp)
+    addi $sp, $sp, 4
     li $v0, 10
     syscall

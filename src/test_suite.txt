@@ -1,0 +1,266 @@
+| =========================================================
+| TEST SUITE (sin input) - P2/P3
+| Cubre: world/local, show, gift, decide of, loop/exit when,
+|        ++/--, -, + - * / // % ^, relacionales, lógicas @ ~ Σ,
+|        break/return, arreglos 2D int/char, comentarios.
+| =========================================================
+
+
+
+world int    gW = 100 endl
+world float  gF = 3.5 endl
+world bool   gB = true endl
+world char   gC = 'Z' endl
+world string gS = "ChipLang" endl
+
+| Arreglos 2D (si tu implementación los maneja como [filas][cols])
+world int  A[1][8] endl
+world char C[1][5] endl
+
+
+gift int sum3 ¿ int a , int b , int c ? ¡
+    return a + b + c endl
+!
+
+gift float poly ¿ float x ? ¡
+    | x^2 + 2x + 1
+    return ¿x * x? + ¿2.0 * x? + 1.0 endl
+!
+
+gift bool isEven ¿ int x ? ¡
+    return ¿x % 2? == 0 endl
+!
+
+gift bool negB ¿ bool b ? ¡
+    return Σ b endl
+!
+
+
+coal navidad ¿ ? ¡
+
+    show "===== START TEST SUITE =====" endl
+    show "== GLOBALES ==" endl
+    show gW endl
+    show gF endl
+    show gB endl
+    show gC endl
+    show gS endl
+
+    | ---------------------------
+    | Init arreglos sin input
+    | ---------------------------
+    A[0][0] = 9 endl
+    A[0][1] = 1 endl
+    A[0][2] = 4 endl
+    A[0][3] = 2 endl
+    A[0][4] = 8 endl
+    A[0][5] = 7 endl
+    A[0][6] = 5 endl
+    A[0][7] = 3 endl
+
+    C[0][0] = 'h' endl
+    C[0][1] = 'o' endl
+    C[0][2] = 'l' endl
+    C[0][3] = 'a' endl
+    C[0][4] = '!' endl
+
+    show "== ARRAY A (antes) ==" endl
+    local int i = 0 endl
+    loop
+        show A[0][i] endl
+        i = i + 1 endl
+        exit when i >= 8 endl
+    end loop endl
+
+    show "== ARRAY C (chars) ==" endl
+    i = 0 endl
+    loop
+        show C[0][i] endl
+        i = i + 1 endl
+        exit when i >= 5 endl
+    end loop endl
+
+
+    | ---------------------------
+    | Aritmética int + precedencia + unarios
+    | ---------------------------
+    show "== ARIT INT ==" endl
+    local int x = 5 endl
+    local int y = 2 endl
+
+    show "x" endl
+    show x endl
+    show "y" endl
+    show y endl
+
+    show "x+y" endl
+    show ¿x + y? endl
+
+    show "x-y" endl
+    show ¿x - y? endl
+
+    show "x*y" endl
+    show ¿x * y? endl
+
+    show "17//5 (div entera)" endl
+    show ¿17 // 5? endl
+
+    show "17%5" endl
+    show ¿17 % 5? endl
+
+    show "2^5" endl
+    show ¿2 ^ 5? endl
+
+    show "(2+3)*4 (paréntesis ¿ ? en tu lenguaje; aquí uso () como agrupación visual)" endl
+    show ¿¿2 + 3? * 4? endl
+
+    show "negativo literal -7" endl
+    local int n = -7 endl
+    show n endl
+
+    show "++x (prefijo)" endl
+    show (++x) endl
+    show "x (después de ++x)" endl
+    show x endl
+
+    show "--x (prefijo)" endl
+    show (--x) endl
+    show "x (después de --x)" endl
+    show x endl
+
+
+    | ---------------------------
+    | Aritmética float
+    | ---------------------------
+    show "== ARIT FLOAT ==" endl
+    local float f = 5.0 endl
+    show "f" endl
+    show f endl
+    show "f/2.0" endl
+    show ¿f / 2.0? endl
+    show "++f" endl
+    show ¿++f? endl
+    show "f (después de ++f)" endl
+    show f endl
+    show "poly(3.0) = x^2+2x+1" endl
+    show poly ¿ 3.0 ? endl
+
+
+    | ---------------------------
+    | Relacionales + booleanos
+    | ---------------------------
+    show "== RELACIONALES ==" endl
+    show "3 < 5" endl
+    show ¿3 < 5? endl
+    show "3 <= 3" endl
+    show ¿3 <= 3? endl
+    show "5 > 9" endl
+    show ¿5 > 9? endl
+    show "5 != 9" endl
+    show ¿5 != 9? endl
+    show "true == false" endl
+    show ¿true == false? endl
+    show "true != false" endl
+    show ¿true != false? endl
+
+
+    | ---------------------------
+    | Lógicas @ ~ Σ
+    | ---------------------------
+    show "== LOGICAS ==" endl
+    local bool b1 = true endl
+    local bool b2 = false endl
+    show "b1" endl
+    show b1 endl
+    show "b2" endl
+    show b2 endl
+    show "b1 @ b2" endl
+    show ¿b1 @ b2? endl
+    show "b1 ~ b2" endl
+    show ¿b1 ~ b2? endl
+    show "Σ b1" endl
+    show ¿Σ b1? endl
+    show "negB(false)" endl
+    show negB ¿ false ? endl
+
+
+    | ---------------------------
+    | decide of (multi-branch) con condiciones combinadas
+    | ---------------------------
+    show "== DECIDE OF ==" endl
+    local int v = 7 endl
+    show "v" endl
+    show v endl
+
+    decide of
+        ¿v < 0? -> ¡
+            show "BRANCH: v < 0" endl
+        !
+        ¿¿v >= 0? @ ¿v < 10?? -> ¡
+            show "BRANCH: 0 <= v < 10" endl
+        !
+        else -> ¡
+            show "BRANCH: v >= 10" endl
+        !
+    end decide endl
+
+
+    | ---------------------------
+    | loop + exit when + break
+    | ---------------------------
+    show "== LOOP / EXIT WHEN / BREAK ==" endl
+    i = 0 endl
+    loop
+        decide of
+            ¿i == 3? -> ¡
+                show "BREAK@i==3" endl
+                break endl
+            !
+            else -> ¡
+                show i endl
+            !
+        end decide endl
+
+        i = i + 1 endl
+        exit when i >= 10 endl
+    end loop endl
+
+
+    | ---------------------------
+    | Funciones (params + return) + expresiones sin asignación
+    | ---------------------------
+    show "== FUNCIONES ==" endl
+    show "sum3(1,2,3)" endl
+    show sum3 ¿ 1 , 2 , 3 ? endl
+
+    show "isEven(10)" endl
+    show isEven ¿ 10 ? endl
+    show "isEven(11)" endl
+    show isEven ¿ 11 ? endl
+
+    show "expresión sin asignación: (8+2)*3" endl
+    show "expresión sin asignación: (8+2)*3" endl
+    show ¿¿8 + 2? * 3? endl
+
+
+    | ---------------------------
+    | Uso de arreglo en expresiones: suma de A
+    | ---------------------------
+    show "== SUMA ARRAY A ==" endl
+    local int s = 0 endl
+    i = 0 endl
+    loop
+        s = s + A[0][i] endl
+        i = i + 1 endl
+        exit when i >= 8 endl
+    end loop endl
+    show "suma(A)" endl
+    show s endl
+
+    show "modifico A[0][0] = A[0][0] + 100" endl
+    A[0][0] = A[0][0] + 100 endl
+    show A[0][0] endl
+
+    show "===== END TEST SUITE =====" endl
+
+!

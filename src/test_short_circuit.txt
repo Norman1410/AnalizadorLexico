@@ -1,0 +1,32 @@
+
+coal navidad () {
+    show "== TEST A: AND short-circuit ==" endl
+    local int x = 0 endl
+    local int b1 = 0 endl
+    
+    show "b1 @ (++x > 0) result:" endl
+    show b1 @ (++x > 0) endl
+    
+    show "x value (should be 0):" endl
+    show x endl
+    
+    show "== TEST B: OR short-circuit ==" endl
+    local int y = 0 endl
+    local int b2 = 1 endl
+    
+    show "b2 ~ (++y > 0) result:" endl
+    show b2 ~ (++y > 0) endl
+    
+    show "y value (should be 0):" endl
+    show y endl
+    
+    show "== RELATIONAL PORTABILITY ==" endl
+    show "3 <= 5 (slt + xori):" endl
+    show 3 <= 5 endl
+    show "5 >= 3 (slt + xori):" endl
+    show 5 >= 3 endl
+    show "5 == 5 (xor + sltiu):" endl
+    show 5 == 5 endl
+    show "5 != 3 (xor + sltu):" endl
+    show 5 != 3 endl
+}

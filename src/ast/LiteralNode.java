@@ -82,6 +82,18 @@ public class LiteralNode extends ASTNode {
         return "char".equalsIgnoreCase(type);
     }
 
+    public boolean isBoolean() {
+        return "boolean".equalsIgnoreCase(normalizeType(type));
+    }
+
+    public boolean getBooleanValue() {
+        if (value instanceof Boolean)
+            return (Boolean) value;
+        if (value instanceof String)
+            return Boolean.parseBoolean(((String) value).replace("\"", ""));
+        return false;
+    }
+
     public String getStringValue() {
         if (value == null)
             return "";

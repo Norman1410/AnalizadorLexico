@@ -18,6 +18,490 @@ public class MipsGenerator {
 
     // Labels para control de flujo
     private int labelCounter = 0;
+
+    private static class RegisterResult {
+        String reg;
+        String type;
+
+        RegisterResult(String r, String t) {
+            this.reg = r;
+            this.type = t;
+        }
+    }
+
+    private RegisterResult emitExpr(ASTNode expr) {
+        if (expr == null)
+            return null;
+
+        // Literal
+        if (expr instanceof LiteralNode) {
+            return emitLiteral((LiteralNode) expr);
+        }
+
+        // Variable
+        if (expr instanceof VariableNode) {
+            return emitVariable((VariableNode) expr);
+        }
+
+        // Binary Operation
+        if (expr instanceof BinaryNode) {
+            return emitBinary((BinaryNode) expr);
+        }
+
+        // Unary Operation
+        if (expr instanceof UnaryNode) {
+            return emitUnary((UnaryNode) expr);
+        }
+
+        // Function Call
+        if (expr instanceof CallNode) {
+            return emitFunctionCall((CallNode) expr);
+        }
+
+        // Array Access
+        if (isNodeNamed(expr, "ArrayAccessNode")) {
+            return emitArrayAccess(expr);
+        }
+
+        return null;
+    }
+
+    private RegisterResult emitLiteral(LiteralNode lit) {
+        if (lit.isFloat()) {
+            String lbl = internFloat(lit.getFloatValue());
+            textSection.append("    l.s $f0, ").append(lbl).append("\n");
+            return new RegisterResult("$f0", "float");
+        }
+        if (lit.isInt()) {
+            textSection.append("    li $t0, ").append(lit.getIntValue()).append("\n");
+            return new RegisterResult("$t0", "int");
+        }
+        if (lit.isChar()) {
+            textSection.append("    li $t0, ").append(lit.getCharValue()).append("\n");
+            return new RegisterResult("$t0", "char");
+        }
+        if (lit.isString()) {
+            String lbl = internString(lit.getStringValue());
+            textSection.append("    la $t0, ").append(lbl).append("\n");
+            return new RegisterResult("$t0", "string");
+        }
+        String type = lit.getType(null);
+        if ("boolean".equalsIgnoreCase(type)) {
+            boolean val = "true".equalsIgnoreCase(lit.getStringValue());
+            textSection.append("    li $t0, ").append(val ? 1 : 0).append("\n");
+            return new RegisterResult("$t0", "boolean");
+        }
+        return null;
+    }
+
+    private RegisterResult emitVariable(VariableNode vn) {
+        String name = vn.getName();
+        String type;
+        if (localType.containsKey(name)) {
+            type = localType.get(name);
+        } else {
+            type = globalType.getOrDefault(name, "int");
+        }
+
+        if ("float".equalsIgnoreCase(type)) {
+            loadVarToFloat(name);
+            return new RegisterResult("$f0", "float");
+        } else {
+            loadVarToT0(name);
+            return new RegisterResult("$t0", type);
+        }
+    }
+
+    private void pushRegister(String reg, String type) {
+        textSection.append("    addi $sp, $sp, -4\n");
+        if ("float".equalsIgnoreCase(type)) {
+            textSection.append("    swc1 ").append(reg).append(", 0($sp)\n");
+        } else {
+            textSection.append("    sw ").append(reg).append(", 0($sp)\n");
+        }
+    }
+
+    private String popRegister(String targetReg, String type) {
+        if ("float".equalsIgnoreCase(type)) {
+            textSection.append("    lwc1 ").append(targetReg).append(", 0($sp)\n");
+        } else {
+            textSection.append("    lw ").append(targetReg).append(", 0($sp)\n");
+        }
+        textSection.append("    addi $sp, $sp, 4\n");
+        return targetReg;
+    }
+
+    private RegisterResult emitBinary(BinaryNode bn) {
+        String op = bn.getOperator();
+
+        RegisterResult lhs = emitExpr(bn.getLeft());
+        if (lhs == null)
+            return null;
+
+        if (op.equals("&&") || op.equals("||") || op.equals("@") || op.equals("~")
+                || op.equalsIgnoreCase("AND") || op.equalsIgnoreCase("OR")) {
+            return emitLogicalShortCircuit(lhs, bn.getRight(), op);
+        }
+
+        pushRegister(lhs.reg, lhs.type);
+
+        RegisterResult rhs = emitExpr(bn.getRight());
+        if (rhs == null) {
+            return null;
+        }
+        boolean useFloat = "float".equalsIgnoreCase(lhs.type) || "float".equalsIgnoreCase(rhs.type);
+
+        if (useFloat) {
+
+            if ("float".equalsIgnoreCase(rhs.type)) {
+                textSection.append("    mov.s $f1, ").append(rhs.reg).append("\n");
+            } else {
+
+                textSection.append("    mtc1 ").append(rhs.reg).append(", $f1\n");
+                textSection.append("    cvt.s.w $f1, $f1\n");
+            }
+
+            if ("float".equalsIgnoreCase(lhs.type)) {
+                popRegister("$f0", "float");
+            } else {
+
+                popRegister("$t0", "int");
+                textSection.append("    mtc1 $t0, $f0\n");
+                textSection.append("    cvt.s.w $f0, $f0\n");
+            }
+
+            switch (op) {
+                case "+":
+                    textSection.append("    add.s $f0, $f0, $f1\n");
+                    break;
+                case "-":
+                    textSection.append("    sub.s $f0, $f0, $f1\n");
+                    break;
+                case "*":
+                    textSection.append("    mul.s $f0, $f0, $f1\n");
+                    break;
+                case "/":
+                    textSection.append("    div.s $f0, $f0, $f1\n");
+                    break;
+                case "<":
+                    textSection.append("    c.lt.s $f0, $f1\n");
+                    String lElse = newLabel("flt_rel_e");
+                    String lEnd = newLabel("flt_rel_f");
+                    textSection.append("    bc1t ").append(lElse).append("\n");
+                    textSection.append("    li $t0, 0\n");
+                    textSection.append("    j ").append(lEnd).append("\n");
+                    textSection.append(lElse).append(":\n");
+                    textSection.append("    li $t0, 1\n");
+                    textSection.append(lEnd).append(":\n");
+                    return new RegisterResult("$t0", "boolean");
+                case ">":
+                    textSection.append("    c.lt.s $f1, $f0\n");
+                    String lElse2 = newLabel("flt_rel_e");
+                    String lEnd2 = newLabel("flt_rel_f");
+                    textSection.append("    bc1t ").append(lElse2).append("\n");
+                    textSection.append("    li $t0, 0\n");
+                    textSection.append("    j ").append(lEnd2).append("\n");
+                    textSection.append(lElse2).append(":\n");
+                    textSection.append("    li $t0, 1\n");
+                    textSection.append(lEnd2).append(":\n");
+                    return new RegisterResult("$t0", "boolean");
+                case "<=":
+                    textSection.append("    c.le.s $f0, $f1\n");
+                    String lElseLE = newLabel("flt_rel_e");
+                    String lEndLE = newLabel("flt_rel_f");
+                    textSection.append("    bc1t ").append(lElseLE).append("\n");
+                    textSection.append("    li $t0, 0\n");
+                    textSection.append("    j ").append(lEndLE).append("\n");
+                    textSection.append(lElseLE).append(":\n");
+                    textSection.append("    li $t0, 1\n");
+                    textSection.append(lEndLE).append(":\n");
+                    return new RegisterResult("$t0", "boolean");
+                case ">=":
+                    textSection.append("    c.le.s $f1, $f0\n");
+                    String lElseGE = newLabel("flt_rel_e");
+                    String lEndGE = newLabel("flt_rel_f");
+                    textSection.append("    bc1t ").append(lElseGE).append("\n");
+                    textSection.append("    li $t0, 0\n");
+                    textSection.append("    j ").append(lEndGE).append("\n");
+                    textSection.append(lElseGE).append(":\n");
+                    textSection.append("    li $t0, 1\n");
+                    textSection.append(lEndGE).append(":\n");
+                    return new RegisterResult("$t0", "boolean");
+                case "==":
+                    textSection.append("    c.eq.s $f0, $f1\n");
+                    String lElseEQ = newLabel("flt_rel_e");
+                    String lEndEQ = newLabel("flt_rel_f");
+                    textSection.append("    bc1t ").append(lElseEQ).append("\n");
+                    textSection.append("    li $t0, 0\n");
+                    textSection.append("    j ").append(lEndEQ).append("\n");
+                    textSection.append(lElseEQ).append(":\n");
+                    textSection.append("    li $t0, 1\n");
+                    textSection.append(lEndEQ).append(":\n");
+                    return new RegisterResult("$t0", "boolean");
+                case "!=":
+                    textSection.append("    c.eq.s $f0, $f1\n");
+                    String lElseNE = newLabel("flt_rel_e");
+                    String lEndNE = newLabel("flt_rel_f");
+                    textSection.append("    bc1f ").append(lElseNE).append("\n");
+                    textSection.append("    li $t0, 0\n");
+                    textSection.append("    j ").append(lEndNE).append("\n");
+                    textSection.append(lElseNE).append(":\n");
+                    textSection.append("    li $t0, 1\n");
+                    textSection.append(lEndNE).append(":\n");
+                    return new RegisterResult("$t0", "boolean");
+                default:
+                    return null;
+            }
+            return new RegisterResult("$f0", "float");
+        }
+
+        else {
+
+            textSection.append("    move $t1, ").append(rhs.reg).append("\n");
+            popRegister("$t0", "int");
+
+            switch (op) {
+                case "+":
+                    textSection.append("    add $t0, $t0, $t1\n");
+                    break;
+                case "-":
+                    textSection.append("    sub $t0, $t0, $t1\n");
+                    break;
+                case "*":
+                    textSection.append("    mul $t0, $t0, $t1\n");
+                    break;
+                case "/":
+                    textSection.append("    div $t0, $t1\n");
+                    textSection.append("    mflo $t0\n");
+                    break;
+                case "%":
+                    textSection.append("    div $t0, $t1\n");
+                    textSection.append("    mfhi $t0\n");
+                    break;
+                case "<":
+                    textSection.append("    slt $t0, $t0, $t1\n");
+                    break;
+                case "<=":
+                    textSection.append("    slt $t0, $t1, $t0\n");
+                    textSection.append("    xori $t0, $t0, 1\n");
+                    break;
+                case ">":
+                    textSection.append("    slt $t0, $t1, $t0\n");
+                    break;
+                case ">=":
+                    textSection.append("    slt $t0, $t0, $t1\n");
+                    textSection.append("    xori $t0, $t0, 1\n");
+                    break;
+                case "==":
+                    textSection.append("    xor $t0, $t0, $t1\n");
+                    textSection.append("    sltiu $t0, $t0, 1\n");
+                    break;
+                case "!=":
+                    textSection.append("    xor $t0, $t0, $t1\n");
+                    textSection.append("    sltu $t0, $zero, $t0\n");
+                    break;
+                case "@":
+                case "AND":
+                case "~":
+                case "OR":
+                    return null;
+                case "^":
+                    String lblLoop = newLabel("pow_loop");
+                    String lblEnd = newLabel("pow_end");
+
+                    textSection.append("    li $t2, 1\n");
+                    textSection.append(lblLoop).append(":\n");
+                    textSection.append("    beq $t1, $zero, ").append(lblEnd).append("\n");
+                    textSection.append("    mul $t2, $t2, $t0\n");
+                    textSection.append("    addi $t1, $t1, -1\n");
+                    textSection.append("    j ").append(lblLoop).append("\n");
+                    textSection.append(lblEnd).append(":\n");
+                    textSection.append("    move $t0, $t2\n");
+                    break;
+                default:
+                    return null;
+            }
+            return new RegisterResult("$t0", "int");
+        }
+    }
+
+    private RegisterResult emitLogicalShortCircuit(RegisterResult lhs, ASTNode rightExpr, String op) {
+        String endLbl = newLabel("logic_end");
+        if (!"$t0".equals(lhs.reg)) {
+            if ("float".equalsIgnoreCase(lhs.type)) {
+                textSection.append("    cvt.w.s $f0, ").append(lhs.reg).append("\n");
+                textSection.append("    mfc1 $t0, $f0\n");
+            } else {
+                textSection.append("    move $t0, ").append(lhs.reg).append("\n");
+            }
+        }
+
+        if (op.equals("@") || op.equalsIgnoreCase("AND") || op.equals("&&")) {
+            textSection.append("    beq $t0, $zero, ").append(endLbl).append("\n");
+        } else {
+            textSection.append("    bne $t0, $zero, ").append(endLbl).append("\n");
+        }
+        RegisterResult rhs = emitExpr(rightExpr);
+        if (rhs == null)
+            return null;
+        if (!"$t0".equals(rhs.reg)) {
+            if ("float".equalsIgnoreCase(rhs.type)) {
+                textSection.append("    cvt.w.s $f0, ").append(rhs.reg).append("\n");
+                textSection.append("    mfc1 $t0, $f0\n");
+            } else {
+                textSection.append("    move $t0, ").append(rhs.reg).append("\n");
+            }
+        }
+
+        textSection.append(endLbl).append(":\n");
+        return new RegisterResult("$t0", "boolean");
+    }
+
+    private RegisterResult emitUnary(UnaryNode un) {
+        String op = un.getOperator();
+        RegisterResult res = emitExpr(un.getExpression());
+        if (res == null)
+            return null;
+
+        if ("float".equalsIgnoreCase(res.type)) {
+            if ("-".equals(op)) {
+                textSection.append("    neg.s ").append(res.reg).append(", ").append(res.reg).append("\n");
+                return res;
+            }
+            if (op.contains("++") || op.contains("--")) {
+                ASTNode operand = un.getExpression();
+                if (!emitLValueAddress(operand))
+                    return null;
+                textSection.append("    l.s $f0, 0($t1)\n");
+
+                String lblOne = internFloat(1.0f);
+                textSection.append("    l.s $f1, ").append(lblOne).append("\n");
+                if (!un.isPrefix()) {
+
+                    if (op.contains("++"))
+                        textSection.append("    add.s $f0, $f0, $f1\n");
+                    else
+                        textSection.append("    sub.s $f0, $f0, $f1\n");
+
+                    textSection.append("    s.s $f0, 0($t1)\n");
+                    if (op.contains("++"))
+                        textSection.append("    sub.s $f0, $f0, $f1\n");
+                    else
+                        textSection.append("    add.s $f0, $f0, $f1\n");
+
+                } else {
+                    if (op.contains("++"))
+                        textSection.append("    add.s $f0, $f0, $f1\n");
+                    else
+                        textSection.append("    sub.s $f0, $f0, $f1\n");
+
+                    textSection.append("    s.s $f0, 0($t1)\n");
+                }
+                return new RegisterResult("$f0", "float");
+            }
+        } else {
+            if ("-".equals(op)) {
+                textSection.append("    neg ").append(res.reg).append(", ").append(res.reg).append("\n");
+                return res;
+            }
+            if ("!".equals(op) || "NOT".equalsIgnoreCase(op)) {
+                textSection.append("    xori ").append(res.reg).append(", ").append(res.reg).append(", 1\n");
+                return new RegisterResult(res.reg, "boolean");
+            }
+            if (op.contains("++") || op.contains("--")) {
+                ASTNode operand = un.getExpression();
+                if (!emitLValueAddress(operand))
+                    return null;
+                String type = getLValueType(operand);
+                boolean isChar = "char".equalsIgnoreCase(type);
+
+                if (isChar)
+                    textSection.append("    lb $t0, 0($t1)\n");
+                else
+                    textSection.append("    lw $t0, 0($t1)\n");
+
+                if (!un.isPrefix()) {
+                    if (op.contains("++"))
+                        textSection.append("    addi $t2, $t0, 1\n");
+                    else
+                        textSection.append("    addi $t2, $t0, -1\n");
+                    if (isChar)
+                        textSection.append("    sb $t2, 0($t1)\n");
+                    else
+                        textSection.append("    sw $t2, 0($t1)\n");
+                    return new RegisterResult("$t0", "int");
+                } else {
+                    if (op.contains("++"))
+                        textSection.append("    addi $t0, $t0, 1\n");
+                    else
+                        textSection.append("    addi $t0, $t0, -1\n");
+                    if (isChar)
+                        textSection.append("    sb $t0, 0($t1)\n");
+                    else
+                        textSection.append("    sw $t0, 0($t1)\n");
+
+                    return new RegisterResult("$t0", "int");
+                }
+            }
+        }
+        return res;
+    }
+
+    private RegisterResult emitFunctionCall(CallNode cn) {
+        String fname = cn.getName();
+        List<ASTNode> args = cn.getArguments();
+        int n = (args == null) ? 0 : args.size();
+
+        // Push args in reverse order
+        for (int i = n - 1; i >= 0; i--) {
+            ASTNode a = args.get(i);
+            RegisterResult res = emitExpr(a);
+            if (res != null) {
+                pushRegister(res.reg, res.type);
+            } else {
+                // Push dummy 0 if error?
+                textSection.append("    addi $sp, $sp, -4\n");
+                textSection.append("    sw $zero, 0($sp)\n");
+            }
+        }
+
+        textSection.append("    jal ").append(fname).append("\n");
+        if (n > 0) {
+            textSection.append("    addi $sp, $sp, ").append(n * 4).append("\n");
+        }
+
+        String retType = cn.getType((semantics.SymbolTable) semTab);
+        if (retType == null)
+            retType = "int";
+
+        if ("float".equalsIgnoreCase(retType)) {
+
+            return new RegisterResult("$f0", "float");
+        } else {
+
+            textSection.append("    move $t0, $v0\n");
+            return new RegisterResult("$t0", retType);
+        }
+    }
+
+    private RegisterResult emitArrayAccess(ASTNode expr) {
+
+        if (emitLValueAddress(expr)) {
+            String type = getLValueType(expr);
+            if ("float".equalsIgnoreCase(type)) {
+                textSection.append("    l.s $f0, 0($t1)\n");
+                return new RegisterResult("$f0", "float");
+            } else if ("char".equalsIgnoreCase(type)) {
+                textSection.append("    lb $t0, 0($t1)\n");
+                return new RegisterResult("$t0", "char");
+            } else {
+                textSection.append("    lw $t0, 0($t1)\n");
+                return new RegisterResult("$t0", type);
+            }
+        }
+        return null;
+    }
+
     private String exitMainLabel = null;
 
     private String newLabel(String prefix) {
@@ -118,16 +602,27 @@ public class MipsGenerator {
         // reservar espacio para locals
         preScanLocals(mainBlock);
         if (localBytes > 0) {
-            textSection.append("    addi $sp, $sp, -").append(localBytes).append("\n");
-            textSection.append("    move $s0, $sp\n"); // base locals
+            textSection.append("    addi $sp, $sp, -4\n");
+            textSection.append("    sw $fp, 0($sp)\n");
+            textSection.append("    move $fp, $sp\n");
+            textSection.append("    addi $sp, $sp, -4\n");
+            textSection.append("    sw $ra, 0($sp)\n");
+            textSection.append("    addi $sp, $sp, -").append((localBytes + 7) & ~7).append("\n");
+        } else {
+            textSection.append("    addi $sp, $sp, -4\n");
+            textSection.append("    sw $fp, 0($sp)\n");
+            textSection.append("    move $fp, $sp\n");
+            textSection.append("    addi $sp, $sp, -4\n");
+            textSection.append("    sw $ra, 0($sp)\n");
         }
         // emitir statements del main
         emitBlock(mainBlock);
 
         textSection.append(exitMainLabel).append(":\n");
-        if (localBytes > 0) {
-            textSection.append("    addi $sp, $sp, ").append(localBytes).append("\n");
-        }
+        textSection.append("    lw $ra, -4($fp)\n");
+        textSection.append("    move $sp, $fp\n");
+        textSection.append("    lw $fp, 0($sp)\n");
+        textSection.append("    addi $sp, $sp, 4\n");
 
         // exit real
         textSection.append("    li $v0, 10\n");
@@ -145,6 +640,7 @@ public class MipsGenerator {
             if (!(n instanceof DeclNode))
                 continue;
             DeclNode dn = (DeclNode) n;
+            dataSection.add(".align 2");
 
             String name = dn.getName();
             String type = dn.getTypeName();
@@ -153,9 +649,8 @@ public class MipsGenerator {
             String label = "g_" + name;
             globalLabel.put(name, label);
             globalType.put(name, type);
-            globalDims.put(name, dims);
-
-            // Es arreglo?
+            if (dims != null)
+                globalDims.put(name, dims);
             if (dims != null && !dims.isEmpty()) {
                 int slots = 1;
                 for (Integer d : dims)
@@ -198,6 +693,8 @@ public class MipsGenerator {
                     LiteralNode lit = (LiteralNode) init;
                     if (lit.isInt()) {
                         initVal = lit.getIntValue();
+                    } else if (lit.isBoolean()) {
+                        initVal = lit.getBooleanValue() ? 1 : 0;
                     }
                 }
                 dataSection.add(label + ": .word " + initVal);
@@ -266,7 +763,8 @@ public class MipsGenerator {
                                 slots *= d;
                         }
                     }
-                    localOffset.put(name, localBytes);
+                    int currentOff = -8 - localBytes;
+                    localOffset.put(name, currentOff);
                     localType.put(name, dn.getTypeName());
                     localDims.put(name, dims);
                     localBytes += 4 * slots;
@@ -333,8 +831,12 @@ public class MipsGenerator {
             } else if (s instanceof ReturnNode) {
                 handleReturn((ReturnNode) s);
             } else if (s instanceof UnaryNode) {
-                // Statements like ++t; or --t;
-                emitExprInt(s);
+                String type = getNodeType(s);
+                if ("float".equalsIgnoreCase(type)) {
+                    emitExprFloat(s);
+                } else {
+                    emitExprInt(s);
+                }
             } else {
                 textSection.append("    # ignorado: ").append(s.getClass().getSimpleName()).append("\n");
             }
@@ -348,6 +850,7 @@ public class MipsGenerator {
     private void handleDecl(DeclNode dn) {
         if (dn.isGlobal())
             return;
+        localType.put(dn.getName(), dn.getTypeName());
 
         ASTNode init = dn.getInitializer();
         if (init == null)
@@ -492,132 +995,37 @@ public class MipsGenerator {
     private void handleShow(ShowNode show) {
         ASTNode expr = show.getExpression();
 
-        // string literal
-        if (expr instanceof LiteralNode) {
-            LiteralNode lit = (LiteralNode) expr;
-            if (lit.isString()) {
-                String label = internString(lit.getStringValue());
-                printStringLabel(label);
-                printNewLine();
-                return;
-            }
-            if (lit.isInt()) {
-                printIntImm(lit.getIntValue());
-                printNewLine();
-                return;
-            }
-            if (lit.isFloat()) {
-                String lbl = internFloat(lit.getFloatValue());
-                textSection.append("    l.s $f12, ").append(lbl).append("\n");
-                textSection.append("    li $v0, 2\n");
-                textSection.append("    syscall\n");
-                printNewLine();
-                return;
-            }
-            if (lit.isChar()) {
-                textSection.append("    li $v0, 11\n");
-                textSection.append("    li $a0, ").append(lit.getCharValue()).append("\n");
-                textSection.append("    syscall\n");
-                printNewLine();
-                return;
-            }
-        }
-
-        // mostrar arr[i] (int/char/float)
-        if (expr != null && isNodeNamed(expr, "ArrayAccessNode")) {
-            if (emitLValueAddress(expr)) {
-                String type = getLValueType(expr);
-                if ("float".equalsIgnoreCase(type)) {
-                    textSection.append("    l.s $f12, 0($t1)\n");
-                    textSection.append("    li $v0, 2\n");
-                    textSection.append("    syscall\n");
-                } else if ("char".equalsIgnoreCase(type)) {
-                    textSection.append("    lb $t0, 0($t1)\n");
-                    textSection.append("    li $v0, 11\n");
-                    textSection.append("    move $a0, $t0\n");
-                    textSection.append("    syscall\n");
-                } else if ("boolean".equalsIgnoreCase(type)) {
-                    textSection.append("    lb $t0, 0($t1)\n"); // boolean as byte or word? usually word in our impl
-                    // if boolean is word, use lw. Check emitGlobals.
-                    // Actually handleShow (variable) uses 1 for bool.
-                    textSection.append("    lw $t0, 0($t1)\n");
-                    textSection.append("    li $v0, 1\n");
-                    textSection.append("    move $a0, $t0\n");
-                    textSection.append("    syscall\n");
-                } else {
-                    textSection.append("    lw $t0, 0($t1)\n");
-                    textSection.append("    li $v0, 1\n");
-                    textSection.append("    move $a0, $t0\n");
-                    textSection.append("    syscall\n");
-                }
-                printNewLine();
-            }
+        RegisterResult res = emitExpr(expr);
+        if (res == null)
             return;
-        }
 
-        // variable
-        if (expr instanceof VariableNode) {
-            VariableNode vn = (VariableNode) expr;
-            String name = vn.getName();
-
-            String type;
-            if (localType.containsKey(name)) {
-                type = localType.get(name);
-            } else if (globalType.containsKey(name)) {
-                type = globalType.get(name);
-            } else {
-                type = "int";
+        if ("float".equalsIgnoreCase(res.type)) {
+            if (!"$f12".equals(res.reg)) {
+                textSection.append("    mov.s $f12, ").append(res.reg).append("\n");
             }
-
-            if ("string".equalsIgnoreCase(type)) {
-                loadVarToT0(name);
-                // imprime el string apuntado por $t0
-                textSection.append("    li $v0, 4\n");
-                textSection.append("    move $a0, $t0\n");
-                textSection.append("    syscall\n");
-                printNewLine();
-                return;
-            }
-
-            if ("char".equalsIgnoreCase(type)) {
-                loadVarToT0(name);
-                textSection.append("    li $v0, 11\n");
-                textSection.append("    move $a0, $t0\n");
-                textSection.append("    syscall\n");
-                printNewLine();
-                return;
-            }
-
-            if ("float".equalsIgnoreCase(type)) {
-                loadVarToFloat(name);
-                textSection.append("    li $v0, 2\n");
-                textSection.append("    mov.s $f12, $f0\n");
-                textSection.append("    syscall\n");
-                printNewLine();
-                return;
-            }
-
-            // int (default)
-            loadVarToT0(name);
-            textSection.append("    li $v0, 1\n");
-            textSection.append("    move $a0, $t0\n");
+            textSection.append("    li $v0, 2\n");
             textSection.append("    syscall\n");
-            printNewLine();
-            return;
-        }
-
-        // expresión int
-        if (emitExprInt(expr)) {
-            textSection.append("    li $v0, 1\n");
-            textSection.append("    move $a0, $t0\n");
+        } else if ("char".equalsIgnoreCase(res.type)) {
+            textSection.append("    li $v0, 11\n");
+            if (!"$a0".equals(res.reg)) {
+                textSection.append("    move $a0, ").append(res.reg).append("\n");
+            }
             textSection.append("    syscall\n");
-            printNewLine();
-            return;
+        } else if ("string".equalsIgnoreCase(res.type)) {
+            textSection.append("    li $v0, 4\n");
+            if (!"$a0".equals(res.reg)) {
+                textSection.append("    move $a0, ").append(res.reg).append("\n");
+            }
+            textSection.append("    syscall\n");
+        } else {
+            // int / boolean
+            textSection.append("    li $v0, 1\n");
+            if (!"$a0".equals(res.reg)) {
+                textSection.append("    move $a0, ").append(res.reg).append("\n");
+            }
+            textSection.append("    syscall\n");
         }
-
-        textSection.append("    # show no soportado: ")
-                .append(expr == null ? "null" : expr.getClass().getSimpleName())
-                .append("\n");
+        printNewLine();
     }
 
     private void handleCallStmt(CallNode cn) {
@@ -628,25 +1036,30 @@ public class MipsGenerator {
     private void handleDecide(DecideNode dn) {
 
         String endLbl = newLabel("decide_end");
+        List<CaseNode> cases = dn.getCases();
+        ASTNode elseBlock = dn.getElseBlock();
 
         // evaluar cases en orden
-        for (CaseNode c : dn.getCases()) {
-            String nextLbl = newLabel("decide_next");
-            ASTNode cond = c.getExpression();
-            BlockNode blk = c.getBlock();
-            emitCondBranch(cond, null, nextLbl);
-            if (blk != null)
-                emitBlock(blk);
+        for (int i = 0; i < cases.size(); i++) {
+            CaseNode cn = (CaseNode) cases.get(i);
+            String nextLbl = (i < cases.size() - 1 || elseBlock != null) ? newLabel("decide_next") : endLbl;
 
+            emitCondBranch(cn.getExpression(), null, nextLbl);
+            if (cn.getBlock() != null) {
+                emitBlock(cn.getBlock());
+            }
             textSection.append("    j ").append(endLbl).append("\n");
 
-            textSection.append(nextLbl).append(":\n");
+            if (nextLbl != endLbl) {
+                textSection.append(nextLbl).append(":\n");
+            }
         }
 
         // ningún case se cumplió
-        if (dn.getElseBlock() instanceof BlockNode) {
-            BlockNode eb = (BlockNode) dn.getElseBlock();
-            emitBlock(eb);
+        if (elseBlock != null) {
+            if (elseBlock instanceof BlockNode) {
+                emitBlock((BlockNode) elseBlock);
+            }
         }
 
         textSection.append(endLbl).append(":\n");
@@ -667,11 +1080,11 @@ public class MipsGenerator {
         ASTNode cond = ln.getExitCondition();
         if (cond != null) {
             emitCondBranch(cond, loopEnd, loopStart);
+
         } else {
-            textSection.append("    j ").append(loopStart).append("\n");
+            textSection.append("    j ").append(loopStart).append("\n"); // Unconditional loop
         }
 
-        textSection.append("    j ").append(loopStart).append("\n");
         textSection.append(loopEnd).append(":\n");
         breakStack.pop();
     }
@@ -793,6 +1206,10 @@ public class MipsGenerator {
         if (expr == null)
             return false;
 
+        String type = getNodeType(expr);
+        if (type != null && type.toLowerCase().contains("float"))
+            return false;
+
         // literal int/char/bool
         if (expr instanceof LiteralNode) {
             LiteralNode lit = (LiteralNode) expr;
@@ -811,176 +1228,23 @@ public class MipsGenerator {
             }
             return false;
         }
-        // variable int/char
-        if (expr instanceof VariableNode) {
-            VariableNode vn = (VariableNode) expr;
-            String type = getNodeType(vn);
-            if ("float".equals(type))
-                return false; // Fail for floats
-            loadVarToT0(vn.getName());
-            return true;
-        }
-        // unary
-        if (expr instanceof UnaryNode) {
-            UnaryNode un = (UnaryNode) expr;
-            String op = un.getOperator();
 
-            // Negation
-            if ("-".equals(op) || "neg".equalsIgnoreCase(op)) {
-                if (!emitExprInt(un.getExpression()))
-                    return false;
-                textSection.append("    sub $t0, $zero, $t0\n");
-                return true;
-            }
-
-            // Logical NOT
-            if ("!".equals(op) || "NOT".equalsIgnoreCase(op) || "Σ".equals(op)) {
-                if (!emitExprInt(un.getExpression()))
-                    return false;
-                textSection.append("    xori $t0, $t0, 1\n");
-                return true;
-            }
-
-            // Prefix/Postfix increment/decrement
-            boolean isPrefix = op.startsWith("prefix_") || un.isPrefix();
-
-            if (op.contains("++") || op.contains("--")) {
-                ASTNode operand = un.getExpression();
-                int delta = op.contains("++") ? 1 : -1;
-
-                if (operand instanceof VariableNode) {
-                    VariableNode vn = (VariableNode) operand;
-                    String varName = vn.getName();
-                    loadVarToT0(varName);
-
-                    if (isPrefix) {
-                        textSection.append("    addi $t0, $t0, ").append(delta).append("\n");
-                        storeVarFromT0(varName);
-                    } else {
-                        textSection.append("    addi $sp, $sp, -4\n");
-                        textSection.append("    sw $t0, 0($sp)\n"); // Save original for return
-                        textSection.append("    addi $t0, $t0, ").append(delta).append("\n");
-                        storeVarFromT0(varName);
-                        textSection.append("    lw $t0, 0($sp)\n"); // Restore original
-                        textSection.append("    addi $sp, $sp, 4\n");
-                    }
-                    return true;
-                } else if (isNodeNamed(operand, "ArrayAccessNode")) {
-                    if (emitLValueAddress(operand)) {
-                        String type = getLValueType(operand);
-                        boolean isChar = "char".equalsIgnoreCase(type);
-
-                        textSection.append("    addi $sp, $sp, -4\n");
-                        textSection.append("    sw $t1, 0($sp)\n"); // Save address
-
-                        if (isChar) {
-                            textSection.append("    lb $t0, 0($t1)\n");
-                        } else {
-                            textSection.append("    lw $t0, 0($t1)\n");
-                        }
-
-                        if (isPrefix) {
-                            textSection.append("    addi $t0, $t0, ").append(delta).append("\n");
-                            textSection.append("    lw $t1, 0($sp)\n");
-                            if (isChar) {
-                                textSection.append("    sb $t0, 0($t1)\n");
-                            } else {
-                                textSection.append("    sw $t0, 0($t1)\n");
-                            }
-                        } else {
-                            textSection.append("    addi $sp, $sp, -4\n");
-                            textSection.append("    sw $t0, 0($sp)\n"); // Save original value
-
-                            textSection.append("    addi $t0, $t0, ").append(delta).append("\n");
-                            textSection.append("    lw $t1, 4($sp)\n"); // Address is now at +4
-                            if (isChar) {
-                                textSection.append("    sb $t0, 0($t1)\n");
-                            } else {
-                                textSection.append("    sw $t0, 0($t1)\n");
-                            }
-
-                            textSection.append("    lw $t0, 0($sp)\n"); // Restore original value
-                            textSection.append("    addi $sp, $sp, 4\n");
-                        }
-                        textSection.append("    addi $sp, $sp, 4\n"); // Clean address
-                        return true;
-                    }
-                }
-                return false;
-            }
-
+        RegisterResult res = emitExpr(expr);
+        if (res == null)
             return false;
-        }
 
-        // binary
-        if (expr instanceof BinaryNode) {
-            BinaryNode bn = (BinaryNode) expr;
-            String op = bn.getOperator();
-
-            if (!emitExprInt(bn.getLeft()))
-                return false;
-
-            // push left
-            textSection.append("    addi $sp, $sp, -4\n");
-            textSection.append("    sw $t0, 0($sp)\n");
-
-            if (!emitExprInt(bn.getRight()))
-                return false;
-
-            // pop left -> $t1
-            textSection.append("    lw $t1, 0($sp)\n");
-            textSection.append("    addi $sp, $sp, 4\n");
-
-            switch (op) {
-                case "+":
-                    textSection.append("    add $t0, $t1, $t0\n");
-                    break;
-                case "-":
-                    textSection.append("    sub $t0, $t1, $t0\n");
-                    break;
-                case "*":
-                    textSection.append("    mul $t0, $t1, $t0\n");
-                    break;
-                case "/":
-                case "//":
-                    textSection.append("    div $t1, $t0\n");
-                    textSection.append("    mflo $t0\n");
-                    break;
-                case "%":
-                    textSection.append("    div $t1, $t0\n");
-                    textSection.append("    mfhi $t0\n");
-                    break;
-                case "^":
-                    // Power: $t1 ^ $t0
-                    emitPowerOperation();
-                    break;
-                default:
-                    return false;
+        if ("float".equalsIgnoreCase(res.type)) {
+            if (!"$f0".equals(res.reg)) {
+                textSection.append("    mov.s $f0, ").append(res.reg).append("\n");
             }
-            return true;
-        }
-        if (expr instanceof CallNode) {
-            CallNode cn = (CallNode) expr;
-            emitCall(cn);
-            textSection.append("    move $t0, $v0\n");
-            return true;
-        }
-
-        // arr[i] o arr[i][j] como expresión int
-        if (expr != null && isNodeNamed(expr, "ArrayAccessNode")) {
-            if (emitLValueAddress(expr)) {
-                String type = getLValueType(expr);
-                if ("char".equalsIgnoreCase(type)) {
-                    textSection.append("    lb $t0, 0($t1)\n");
-                } else {
-                    textSection.append("    lw $t0, 0($t1)\n");
-                }
-                return true;
+            textSection.append("    cvt.w.s $f0, $f0\n");
+            textSection.append("    mfc1 $t0, $f0\n");
+        } else {
+            if (!"$t0".equals(res.reg)) {
+                textSection.append("    move $t0, ").append(res.reg).append("\n");
             }
-            return false;
         }
-
-        return false;
+        return true;
     }
 
     // =========================
@@ -991,134 +1255,48 @@ public class MipsGenerator {
             throw new IllegalArgumentException("falseLabel null");
 
         if (expr == null) {
-            if (falseLabel != null) {
-                textSection.append("    j ").append(falseLabel).append("\n");
-            }
+            textSection.append("    j ").append(falseLabel).append("\n");
             return;
         }
 
-        // Soporte: && y || con short-circuit
         if (expr instanceof BinaryNode) {
             BinaryNode bn = (BinaryNode) expr;
             String op = bn.getOperator();
 
             if ("&&".equals(op)) {
                 String rhsLbl = newLabel("and_rhs");
-                String contLbl = (trueLabel != null) ? trueLabel : newLabel("and_cont");
-
-                // si left es true evaluar right, si no false
                 emitCondBranch(bn.getLeft(), rhsLbl, falseLabel);
                 textSection.append(rhsLbl).append(":\n");
-                emitCondBranch(bn.getRight(), contLbl, falseLabel);
-
-                if (trueLabel == null) {
-                    textSection.append(contLbl).append(":\n");
-                }
+                emitCondBranch(bn.getRight(), trueLabel, falseLabel);
                 return;
             }
 
             if ("||".equals(op)) {
                 String rhsLbl = newLabel("or_rhs");
-                String contLbl = (trueLabel != null) ? trueLabel : newLabel("or_cont");
-
-                // si left es true cont, si noevaluar right
-                emitCondBranch(bn.getLeft(), contLbl, rhsLbl);
+                emitCondBranch(bn.getLeft(), trueLabel, rhsLbl);
                 textSection.append(rhsLbl).append(":\n");
-                emitCondBranch(bn.getRight(), contLbl, falseLabel);
-
-                if (trueLabel == null) {
-                    textSection.append(contLbl).append(":\n");
-                }
-                return;
-            }
-            // Comparaciones (solo enteros aqui, floats van al fallback generic)
-            if (("<".equals(op) || "<=".equals(op) || ">".equals(op) || ">=".equals(op) || "==".equals(op)
-                    || "!=".equals(op)) &&
-                    (!"float".equals(getNodeType(bn.getLeft())) && !"float".equals(getNodeType(bn.getRight())))) {
-
-                if (!emitExprInt(bn.getLeft())) {
-                    if (falseLabel != null)
-                        textSection.append("    j ").append(falseLabel).append("\n");
-                    return;
-                }
-
-                // push left
-                textSection.append("    addi $sp, $sp, -4\n");
-                textSection.append("    sw $t0, 0($sp)\n");
-                // right
-                if (!emitExprInt(bn.getRight())) {
-                    textSection.append("    addi $sp, $sp, 4\n");
-                    if (falseLabel != null)
-                        textSection.append("    j ").append(falseLabel).append("\n");
-                    return;
-                }
-
-                // pop left -> $t1, right está en $t0
-                textSection.append("    lw $t1, 0($sp)\n");
-                textSection.append("    addi $sp, $sp, 4\n");
-
-                switch (op) {
-                    case "<":
-                        textSection.append("    slt $t2, $t1, $t0\n");
-                        branchOnT2(trueLabel, falseLabel);
-                        break;
-                    case ">":
-                        textSection.append("    slt $t2, $t0, $t1\n");
-                        branchOnT2(trueLabel, falseLabel);
-                        break;
-                    case "<=":
-                        // !(t0 < t1) <=> (t1 <= t0)
-                        textSection.append("    slt $t2, $t0, $t1\n");
-                        // t2 = 1 si t0 < t1
-                        textSection.append("    xori $t2, $t2, 1\n");
-                        branchOnT2(trueLabel, falseLabel);
-                        break;
-                    case ">=":
-                        // !(t1 < t0) <=> (t1 >= t0)
-                        textSection.append("    slt $t2, $t1, $t0\n");
-                        textSection.append("    xori $t2, $t2, 1\n");
-                        branchOnT2(trueLabel, falseLabel);
-                        break;
-                    case "==":
-                        if (trueLabel != null) {
-                            textSection.append("    beq $t1, $t0, ").append(trueLabel).append("\n");
-                            if (falseLabel != null)
-                                textSection.append("    j ").append(falseLabel).append("\n");
-                        } else {
-                            if (falseLabel != null) {
-                                textSection.append("    bne $t1, $t0, ").append(falseLabel).append("\n");
-                            }
-                        }
-                        break;
-                    case "!=":
-                        if (trueLabel != null) {
-                            textSection.append("    bne $t1, $t0, ").append(trueLabel).append("\n");
-                            if (falseLabel != null)
-                                textSection.append("    j ").append(falseLabel).append("\n");
-                        } else {
-                            if (falseLabel != null) {
-                                textSection.append("    beq $t1, $t0, ").append(falseLabel).append("\n");
-                            }
-                        }
-                        break;
-                }
+                emitCondBranch(bn.getRight(), trueLabel, falseLabel);
                 return;
             }
         }
-        // Fallback genérico para cualquier expresión booleana (Variable, Call, Literal,
-        // Unary)
-        if (emitExprBool(expr)) {
-            if (falseLabel != null) {
-                textSection.append("    beq $t0, $zero, ").append(falseLabel).append("\n");
-            }
-            if (trueLabel != null) {
-                textSection.append("    j ").append(trueLabel).append("\n");
-            }
+
+        RegisterResult res = emitExpr(expr);
+        if (res == null) {
+            textSection.append("    j ").append(falseLabel).append("\n");
             return;
         }
 
-        if (falseLabel != null) {
+        if ("float".equalsIgnoreCase(res.type)) {
+            textSection.append("    cvt.w.s $f0, ").append(res.reg).append("\n");
+            textSection.append("    mfc1 $t0, $f0\n");
+            res.reg = "$t0";
+        }
+
+        if (trueLabel != null) {
+            textSection.append("    bne ").append(res.reg).append(", $zero, ").append(trueLabel).append("\n");
             textSection.append("    j ").append(falseLabel).append("\n");
+        } else {
+            textSection.append("    beq ").append(res.reg).append(", $zero, ").append(falseLabel).append("\n");
         }
     }
 
@@ -1156,7 +1334,7 @@ public class MipsGenerator {
     private void loadVarToT0(String name) {
         Integer off = localOffset.get(name);
         if (off != null) {
-            textSection.append("    lw $t0, ").append(off).append("($s0)\n");
+            textSection.append("    lw $t0, ").append(off).append("($fp)\n");
             return;
         }
 
@@ -1172,7 +1350,7 @@ public class MipsGenerator {
     private void storeVarFromT0(String name) {
         Integer off = localOffset.get(name);
         if (off != null) {
-            textSection.append("    sw $t0, ").append(off).append("($s0)\n");
+            textSection.append("    sw $t0, ").append(off).append("($fp)\n");
             return;
         }
 
@@ -1180,27 +1358,6 @@ public class MipsGenerator {
         if (gl != null) {
             textSection.append("    sw $t0, ").append(gl).append("\n");
         }
-    }
-
-    private void emitPowerOperation() {
-        // Compute $t1 ^ $t0, result in $t0
-        // Uses $t2 for result, $t3 for base, $t4 for exponent
-        String powLoop = newLabel("pow_loop");
-        String powEnd = newLabel("pow_end");
-
-        textSection.append("    li $t2, 1\n"); // result = 1
-        textSection.append("    beq $t0, $zero, ").append(powEnd).append("\n"); // if exp == 0, done
-        textSection.append("    move $t3, $t1\n"); // base = $t1
-        textSection.append("    move $t4, $t0\n"); // counter = $t0
-
-        textSection.append(powLoop).append(":\n");
-        textSection.append("    beq $t4, $zero, ").append(powEnd).append("\n");
-        textSection.append("    mul $t2, $t2, $t3\n"); // result *= base
-        textSection.append("    addi $t4, $t4, -1\n"); // counter--
-        textSection.append("    j ").append(powLoop).append("\n");
-
-        textSection.append(powEnd).append(":\n");
-        textSection.append("    move $t0, $t2\n"); // return result
     }
 
     private void handleArrayInitialization(String arrayName, ArrayLiteralNode aln) {
@@ -1225,14 +1382,14 @@ public class MipsGenerator {
             int elemOffset = baseOffset + (i * stride);
             if ("float".equalsIgnoreCase(type)) {
                 if (emitExprFloat(elem)) {
-                    textSection.append("    s.s $f0, ").append(elemOffset).append("($s0)\n");
+                    textSection.append("    s.s $f0, ").append(elemOffset).append("($fp)\n");
                 }
             } else {
                 if (emitExprInt(elem)) {
                     if (stride == 1) {
-                        textSection.append("    sb $t0, ").append(elemOffset).append("($s0)\n");
+                        textSection.append("    sb $t0, ").append(elemOffset).append("($fp)\n");
                     } else {
-                        textSection.append("    sw $t0, ").append(elemOffset).append("($s0)\n");
+                        textSection.append("    sw $t0, ").append(elemOffset).append("($fp)\n");
                     }
                 }
             }
@@ -1256,178 +1413,77 @@ public class MipsGenerator {
     private String getNodeType(ASTNode n) {
         if (n == null)
             return "int";
+
+        // DEBUG PRINT
+        // System.err.println("TRACE: getNodeType(" + n.getClass().getSimpleName() +
+        // ")");
+
+        // 1. VariableNode: check maps directly
         if (n instanceof VariableNode) {
             String name = ((VariableNode) n).getName();
-            if (localType.containsKey(name))
+            if (localType.containsKey(name)) {
+                // System.err.println(" VAR " + name + " -> local: " + localType.get(name));
                 return localType.get(name);
-            if (globalType.getOrDefault(name, "int") != null)
-                return globalType.getOrDefault(name, "int");
+            }
+            // System.err.println(" VAR " + name + " -> global/default: " +
+            // globalType.getOrDefault(name, "int"));
+            return globalType.getOrDefault(name, "int");
         }
+        if (n instanceof UnaryNode) {
+            String t = getNodeType(((UnaryNode) n).getExpression());
+            // System.err.println(" UNARY peel -> " + t);
+            return t;
+        }
+        if (n instanceof BinaryNode) {
+            String t1 = getNodeType(((BinaryNode) n).getLeft());
+            String t2 = getNodeType(((BinaryNode) n).getRight());
+            if ("float".equalsIgnoreCase(t1) || "float".equalsIgnoreCase(t2))
+                return "float";
+            return "int";
+        }
+
         if (isNodeNamed(n, "ArrayAccessNode")) {
             return getLValueType(n);
         }
-        return n.getType((semantics.SymbolTable) semTab);
+        String t = n.getType((semantics.SymbolTable) semTab);
+        if (t != null && t.toLowerCase().contains("float"))
+            return "float";
+        return t;
+    }
+
+    private boolean emitBoolToT0(ASTNode expr) {
+        String lblTrue = newLabel("bool_t");
+        String lblFalse = newLabel("bool_f");
+        String lblEnd = newLabel("bool_end");
+
+        try {
+            emitCondBranch(expr, lblTrue, lblFalse);
+        } catch (Exception e) {
+            return false;
+        }
+
+        // False block
+        textSection.append(lblFalse).append(":\n");
+        textSection.append("    li $t0, 0\n");
+        textSection.append("    j ").append(lblEnd).append("\n");
+
+        // True block
+        textSection.append(lblTrue).append(":\n");
+        textSection.append("    li $t0, 1\n");
+
+        // End
+        textSection.append(lblEnd).append(":\n");
+        return true;
     }
 
     private boolean emitExprBool(ASTNode expr) {
-        if (expr == null)
+        RegisterResult res = emitExpr(expr);
+        if (res == null)
             return false;
-
-        // Boolean literals
-        if (expr instanceof LiteralNode) {
-            LiteralNode lit = (LiteralNode) expr;
-            String litType = lit.getType(null);
-            if ("boolean".equals(litType)) {
-                // Check if it's true or false by getting string value
-                String strVal = lit.getStringValue();
-                boolean boolVal = "true".equalsIgnoreCase(strVal);
-                textSection.append("    li $t0, ").append(boolVal ? 1 : 0).append("\n");
-                return true;
-            }
+        if (!"$t0".equals(res.reg)) {
+            textSection.append("    move $t0, ").append(res.reg).append("\n");
         }
-
-        // Unary NOT
-        if (expr instanceof UnaryNode) {
-            UnaryNode un = (UnaryNode) expr;
-            String op = un.getOperator();
-            if ("!".equals(op) || "NOT".equalsIgnoreCase(op) || "Σ".equals(op)) {
-                if (!emitExprBool(un.getExpression()))
-                    return false;
-                textSection.append("    xori $t0, $t0, 1\n");
-                return true;
-            }
-        }
-
-        // Binary expressions
-        if (expr instanceof BinaryNode) {
-            BinaryNode bn = (BinaryNode) expr;
-            String op = bn.getOperator();
-
-            // Relational operators
-            if ("<".equals(op) || "<=".equals(op) || ">".equals(op) ||
-                    ">=".equals(op) || "==".equals(op) || "!=".equals(op)) {
-
-                String lt = getNodeType(bn.getLeft());
-                String rt = getNodeType(bn.getRight());
-
-                if ("float".equals(lt) || "float".equals(rt)) {
-                    // Comparación de punto flotante
-                    if (!emitExprFloat(bn.getLeft()))
-                        return false;
-                    textSection.append("    addi $sp, $sp, -4\n");
-                    textSection.append("    swc1 $f0, 0($sp)\n");
-                    if (!emitExprFloat(bn.getRight()))
-                        return false;
-                    textSection.append("    mov.s $f1, $f0\n");
-                    textSection.append("    lwc1 $f0, 0($sp)\n");
-                    textSection.append("    addi $sp, $sp, 4\n");
-
-                    switch (op) {
-                        case "<":
-                            textSection.append("    c.lt.s $f0, $f1\n");
-                            break;
-                        case "<=":
-                            textSection.append("    c.le.s $f0, $f1\n");
-                            break;
-                        case ">":
-                            textSection.append("    c.lt.s $f1, $f0\n");
-                            break;
-                        case ">=":
-                            textSection.append("    c.le.s $f1, $f0\n");
-                            break;
-                        case "==":
-                            textSection.append("    c.eq.s $f0, $f1\n");
-                            break;
-                        case "!=":
-                            textSection.append("    c.eq.s $f0, $f1\n");
-                            break;
-                    }
-                    String lblTrue = newLabel("flt_true");
-                    String lblEnd = newLabel("flt_end");
-                    if ("!=".equals(op)) {
-                        textSection.append("    bc1f ").append(lblTrue).append("\n");
-                    } else {
-                        textSection.append("    bc1t ").append(lblTrue).append("\n");
-                    }
-                    textSection.append("    li $t0, 0\n");
-                    textSection.append("    j ").append(lblEnd).append("\n");
-                    textSection.append(lblTrue).append(":\n");
-                    textSection.append("    li $t0, 1\n");
-                    textSection.append(lblEnd).append(":\n");
-                    return true;
-                }
-
-                if (!emitExprInt(bn.getLeft()))
-                    return false;
-                textSection.append("    addi $sp, $sp, -4\n");
-                textSection.append("    sw $t0, 0($sp)\n");
-
-                if (!emitExprInt(bn.getRight()))
-                    return false;
-                textSection.append("    move $t1, $t0\n");
-                textSection.append("    lw $t0, 0($sp)\n");
-                textSection.append("    addi $sp, $sp, 4\n");
-
-                // Generate comparison, result in $t0 (0 or 1)
-                switch (op) {
-                    case "<":
-                        textSection.append("    slt $t0, $t0, $t1\n");
-                        break;
-                    case ">":
-                        textSection.append("    slt $t0, $t1, $t0\n");
-                        break;
-                    case "<=":
-                        textSection.append("    slt $t0, $t1, $t0\n");
-                        textSection.append("    xori $t0, $t0, 1\n");
-                        break;
-                    case ">=":
-                        textSection.append("    slt $t0, $t0, $t1\n");
-                        textSection.append("    xori $t0, $t0, 1\n");
-                        break;
-                    case "==":
-                        textSection.append("    sub $t0, $t0, $t1\n");
-                        textSection.append("    sltiu $t0, $t0, 1\n");
-                        break;
-                    case "!=":
-                        textSection.append("    sub $t0, $t0, $t1\n");
-                        textSection.append("    sltu $t0, $zero, $t0\n");
-                        break;
-                }
-                return true;
-            }
-
-            // Logical operators
-            if ("&&".equals(op) || "@".equals(op)) {
-                if (!emitExprBool(bn.getLeft()))
-                    return false;
-                textSection.append("    addi $sp, $sp, -4\n");
-                textSection.append("    sw $t0, 0($sp)\n");
-
-                if (!emitExprBool(bn.getRight()))
-                    return false;
-                textSection.append("    lw $t1, 0($sp)\n");
-                textSection.append("    addi $sp, $sp, 4\n");
-                textSection.append("    and $t0, $t0, $t1\n");
-                return true;
-            }
-
-            if ("||".equals(op) || "~".equals(op)) {
-                if (!emitExprBool(bn.getLeft()))
-                    return false;
-                textSection.append("    addi $sp, $sp, -4\n");
-                textSection.append("    sw $t0, 0($sp)\n");
-
-                if (!emitExprBool(bn.getRight()))
-                    return false;
-                textSection.append("    lw $t1, 0($sp)\n");
-                textSection.append("    addi $sp, $sp, 4\n");
-                textSection.append("    or $t0, $t0, $t1\n");
-                return true;
-            }
-        }
-
-        // Fallback: try as int (for compatibility)
-        return emitExprInt(expr);
+        return true;
     }
 
     private boolean isNodeNamed(Object o, String simpleName) {
@@ -1460,7 +1516,7 @@ public class MipsGenerator {
 
             Integer off = localOffset.get(name);
             if (off != null) {
-                textSection.append("    addi $t1, $s0, ").append(off).append("\n");
+                textSection.append("    addi $t1, $fp, ").append(off).append("\n");
                 return true;
             }
 
@@ -1502,7 +1558,7 @@ public class MipsGenerator {
             // cargar base address del arreglo en $t1
             Integer off = localOffset.get(arrName);
             if (off != null) {
-                textSection.append("    addi $t1, $s0, ").append(off).append("\n");
+                textSection.append("    addi $t1, $fp, ").append(off).append("\n");
             } else {
                 String gl = globalLabel.get(arrName);
                 if (gl == null) {
@@ -1559,12 +1615,19 @@ public class MipsGenerator {
                 textSection.append("    addu $t2, $t2, $t3\n");
             }
 
+            textSection.append("    addi $sp, $sp, -4\n");
+            textSection.append("    sw $t2, 0($sp)\n");
+
             // Recuperar base ($t1)
-            textSection.append("    lw $t1, 0($sp)\n");
-            textSection.append("    addi $sp, $sp, 4\n");
+            textSection.append("    lw $t1, 4($sp)\n");
 
             // byte offset = linear * stride
             String type = getLValueType(target);
+
+            // Recuperar linear ($t2)
+            textSection.append("    lw $t2, 0($sp)\n");
+            textSection.append("    addi $sp, $sp, 8\n"); // Pop t2 y base
+
             if (!"char".equalsIgnoreCase(type)) {
                 textSection.append("    sll $t2, $t2, 2\n");
             }
@@ -1604,44 +1667,6 @@ public class MipsGenerator {
     // =========================
     // Literal parsing
     // =========================
-    private int parseIntLiteral(LiteralNode lit) {
-        Object v = getField(lit, "value");
-        if (v instanceof Integer) {
-            return (Integer) v;
-        }
-        if (v instanceof String) {
-            String s = (String) v;
-            try {
-                return Integer.parseInt(s.replace("\"", "").trim());
-            } catch (Exception ignored) {
-            }
-        }
-        return 0;
-    }
-
-    private String parseStringLiteral(LiteralNode lit) {
-        Object v = getField(lit, "value");
-        if (v instanceof String) {
-            String s = (String) v;
-            if (s.startsWith("\"") && s.endsWith("\"") && s.length() >= 2) {
-                return s.substring(1, s.length() - 1);
-            }
-            return s;
-        }
-        return "";
-    }
-
-    private Object getField(Object obj, String fieldName) {
-        if (obj == null)
-            return null;
-        try {
-            Field f = obj.getClass().getDeclaredField(fieldName);
-            f.setAccessible(true);
-            return f.get(obj);
-        } catch (Exception e) {
-            return null;
-        }
-    }
 
     private void emitAllFunctions(ProgramNode program) {
         List<ASTNode> fns = program.getFunctions();
@@ -1662,92 +1687,61 @@ public class MipsGenerator {
 
         textSection.append("\n").append(fname).append(":\n");
 
-        // Guardaa $ra y $s0
-        textSection.append("    addi $sp, $sp, -8\n");
-        textSection.append("    sw $ra, 4($sp)\n");
-        textSection.append("    sw $s0, 0($sp)\n");
+        textSection.append("    addi $sp, $sp, -4\n");
+        textSection.append("    sw $fp, 0($sp)\n");
+        textSection.append("    move $fp, $sp\n");
+        textSection.append("    addi $sp, $sp, -4\n");
+        textSection.append("    sw $ra, 0($sp)\n");
 
-        // Reset estado de frame de función
         localOffset.clear();
         localType.clear();
         localDims.clear();
         localBytes = 0;
+
         BlockNode body = fn.getBlock();
-
-        // Reservar espacio para params como locals primero
         List<ParamNode> ps = fn.getParams();
-        int paramCount = (ps == null) ? 0 : ps.size();
-        for (int i = 0; i < paramCount; i++) {
-            ParamNode p = ps.get(i);
-            String pname = p.getName();
-            String ptype = p.getType();
 
-            localOffset.put(pname, localBytes);
-            localType.put(pname, ptype);
-            localDims.put(pname, Collections.emptyList());
-            localBytes += 4;
-        }
         if (body != null) {
             preScanLocals(body);
         }
-        int frameBytes = localBytes;
-        if (frameBytes > 0) {
-            textSection.append("    addi $sp, $sp, -").append(frameBytes).append("\n");
+
+        if (localBytes > 0) {
+            textSection.append("    addi $sp, $sp, -").append(localBytes).append("\n");
         }
-        textSection.append("    move $s0, $sp\n");
-        bindParamsAsLocals(fn, frameBytes);
+
+        if (ps != null) {
+            for (int i = 0; i < ps.size(); i++) {
+                ParamNode p = ps.get(i);
+                localType.put(p.getName(), p.getType());
+                localOffset.put(p.getName(), 4 + (i * 4));
+            }
+        }
 
         String prevExit = currentExitLabel;
+        int allocBytes = (localBytes + 7) & ~7;
+        textSection.append("    addi $sp, $sp, -").append(allocBytes).append("\n");
+
         currentExitLabel = exitLbl;
 
         if (body != null)
             emitBlock(body);
 
-        // Epílogo
         textSection.append(exitLbl).append(":\n");
+        textSection.append("    lw $ra, -4($fp)\n");
+        textSection.append("    move $sp, $fp\n");
 
-        if (frameBytes > 0) {
-            textSection.append("    addi $sp, $sp, ").append(frameBytes).append("\n");
-        }
+        textSection.append("    lw $fp, 0($sp)\n");
+        textSection.append("    addi $sp, $sp, 4\n");
 
-        textSection.append("    lw $s0, 0($sp)\n");
-        textSection.append("    lw $ra, 4($sp)\n");
-        textSection.append("    addi $sp, $sp, 8\n");
         textSection.append("    jr $ra\n");
 
         currentExitLabel = prevExit;
     }
 
-    private void bindParamsAsLocals(FunctionNode fn, int frameBytes) {
-        List<ParamNode> ps = fn.getParams();
-        if (ps == null || ps.isEmpty())
-            return;
-
-        int argsBase = frameBytes + 8;
-
-        for (int i = 0; i < ps.size(); i++) {
-            ParamNode p = ps.get(i);
-            String name = p.getName();
-
-            Integer dstOff = localOffset.get(name);
-            if (dstOff == null)
-                continue;
-
-            // arg i está en: ($sp + argsBase + i*4)
-            if ("float".equalsIgnoreCase(p.getType())) {
-                textSection.append("    lwc1 $f0, ").append(argsBase + i * 4).append("($sp)\n");
-                textSection.append("    swc1 $f0, ").append(dstOff).append("($s0)\n");
-            } else {
-                textSection.append("    lw $t0, ").append(argsBase + i * 4).append("($sp)\n");
-                textSection.append("    sw $t0, ").append(dstOff).append("($s0)\n");
-            }
-        }
-    }
-
     private void storeVarFromFloat(String name) {
         Integer off = localOffset.get(name);
         if (off != null) {
-            textSection.append("    s.s $f0, ").append(off).append("($s0)\n");
+            textSection.append("    s.s $f0, ").append(off).append("($fp)\n");
             return;
         }
         String gl = globalLabel.get(name);
@@ -1759,7 +1753,7 @@ public class MipsGenerator {
     private void loadVarToFloat(String name) {
         Integer off = localOffset.get(name);
         if (off != null) {
-            textSection.append("    l.s $f0, ").append(off).append("($s0)\n");
+            textSection.append("    l.s $f0, ").append(off).append("($fp)\n");
             return;
         }
         String gl = globalLabel.get(name);
@@ -1801,84 +1795,22 @@ public class MipsGenerator {
     }
 
     private boolean emitExprFloat(ASTNode expr) {
-        if (expr == null)
+        RegisterResult res = emitExpr(expr);
+        if (res == null)
             return false;
 
-        if (expr instanceof LiteralNode) {
-            LiteralNode lit = (LiteralNode) expr;
-            if (lit.isFloat()) {
-                String lbl = internFloat(lit.getFloatValue());
-                textSection.append("    l.s $f0, ").append(lbl).append("\n");
-                return true;
+        if ("float".equalsIgnoreCase(res.type)) {
+            if (!"$f0".equals(res.reg)) {
+                textSection.append("    mov.s $f0, ").append(res.reg).append("\n");
             }
-            if (lit.isInt()) {
-                textSection.append("    li $t0, ").append(lit.getIntValue()).append("\n");
-                textSection.append("    mtc1 $t0, $f0\n");
-                textSection.append("    cvt.s.w $f0, $f0\n");
-                return true;
+        } else {
+            if (!"$t0".equals(res.reg)) {
+                textSection.append("    move $t0, ").append(res.reg).append("\n");
             }
-        }
-
-        if (expr instanceof VariableNode) {
-            VariableNode vn = (VariableNode) expr;
-            loadVarToFloat(vn.getName());
-            return true;
-        }
-
-        if (expr instanceof BinaryNode) {
-            BinaryNode bn = (BinaryNode) expr;
-            String op = bn.getOperator();
-
-            if (!emitExprFloat(bn.getLeft()))
-                return false;
-            textSection.append("    addi $sp, $sp, -4\n");
-            textSection.append("    swc1 $f0, 0($sp)\n");
-
-            if (!emitExprFloat(bn.getRight()))
-                return false;
-            textSection.append("    mov.s $f1, $f0\n");
-            textSection.append("    lwc1 $f0, 0($sp)\n");
-            textSection.append("    addi $sp, $sp, 4\n");
-
-            switch (op) {
-                case "+":
-                    textSection.append("    add.s $f0, $f0, $f1\n");
-                    break;
-                case "-":
-                    textSection.append("    sub.s $f0, $f0, $f1\n");
-                    break;
-                case "*":
-                    textSection.append("    mul.s $f0, $f0, $f1\n");
-                    break;
-                case "/":
-                    textSection.append("    div.s $f0, $f0, $f1\n");
-                    break;
-                default:
-                    return false;
-            }
-            return true;
-        }
-
-        if (expr instanceof CallNode) {
-            emitCall((CallNode) expr);
-            return true;
-        }
-
-        if (expr != null && isNodeNamed(expr, "ArrayAccessNode")) {
-            if (emitLValueAddress(expr)) {
-                textSection.append("    l.s $f0, 0($t1)\n");
-                return true;
-            }
-            return false;
-        }
-
-        if (emitExprInt(expr)) {
             textSection.append("    mtc1 $t0, $f0\n");
             textSection.append("    cvt.s.w $f0, $f0\n");
-            return true;
         }
-
-        return false;
+        return true;
     }
 
     private void emitCall(CallNode cn) {
