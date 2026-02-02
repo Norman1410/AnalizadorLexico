@@ -8,16 +8,12 @@
 
 world string banner = "=== CALCULADORA ===" endl
 
-gift bool isEven ¿ int n ? ¡
-    return ¿ n % 2 == 0 ? endl
-!
 
 coal navidad ¿ ? ¡
     local int op = 0 endl
     local float a = 0.0 endl
     local float b = 0.0 endl
     local float res = 0.0 endl
-    local bool par = false endl
 
     show banner endl
 
@@ -70,9 +66,6 @@ coal navidad ¿ ? ¡
                     !
                 end decide endl
 
-                par = isEven ¿ op ? endl
-                show "op es par? (bool):" endl
-                show par endl
             !
             else -> ¡
                 | Si op == 0, salimos
